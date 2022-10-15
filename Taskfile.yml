@@ -1,0 +1,65 @@
+version: 3
+
+vars:
+  VENV_FLTK: "venv"
+  VENV_FLTK_PYTHON: "{{.VENV_FLTK}}/bin/python"
+  VENV_FLTK_PIP: "{{.VENV_FLTK}}/bin/pip"
+
+  VENV_JUPYTER: "venv-jupyter"
+  VENV_JUPYTER_PYTHON: "{{.VENV_JUPYTER}}/bin/python"
+  VENV_JUPYTER_PIP: "{{.VENV_JUPYTER}}/bin/pip"
+
+  PROJECT_ID: "test-bed-fltk"
+  DOCKER_IMAGE_NAME: "gcr.io/{{.PROJECT_ID}}/fltk"
+
+tasks:
+  # Jupyter
+  venv-jupyter:create:
+    cmds:
+      - "python -m venv {{.VENV_JUPYTER}}"
+      - task: venv:install
+    status: [ "test -d {{.VENV_JUPYTER}}" ]
+  venv-jupyter:install:
+    cmds:
+      - "{{.VENV_JUPYTER_PIP}} install -r requirements-jupyter.txt"
+      - "{{.VENV_JUPYTER_PYTHON}} -m bash_kernel.install"
+  venv-jupyter:clean: "rm -r {{.VENV_JUPYTER}}"
+  jupyter:
+    deps: [ venv-jupyter:create ]
+    cmds: [ "jupyter notebook jupyter/ --no-browser" ]
+  # FLTK venv
+  venv:create:
+    cmds:
+      - "python -m venv {{.VENV_FLTK}}"
+      - task: venv:install
+    status: [ "test -d {{.VENV_FLTK}}" ]
+  venv:install: "{{.VENV_FLTK_PIP}} install -r requirements-cpu.txt"
+  venv:clean: "rm -r {{.VENV_FLTK}}"
+  # FLTK
+  fltk:dataset:
+    deps: [ venv:create ]
+    cmds: [ "{{.VENV_FLTK_PYTHON}} -m fltk extractor ./configs/example_cloud_experiment.json" ]
+  fltk:run-orchestrator:
+    cmds:
+      - >
+        {{.VENV_FLTK_PYTHON}} -m fltk cluster
+        configs/example_cloud_experiment.json
+        configs/experiment_tasks/4000_4000_3.json
+        -l True
+
+  # Docker
+  docker:build:
+    deps: [ fltk:dataset ]
+    env:
+      DOCKER_BUILDKIT: "1"
+    cmds: [ "docker build --platform linux/amd64 . --tag {{.DOCKER_IMAGE_NAME}}" ]
+  docker:push:
+    deps: [ docker:build ]
+    cmds: [ "docker push {{.DOCKER_IMAGE_NAME}}" ]
+  # Cleanup
+  clean:
+    deps:
+      - "venv:clean"
+      - "venv-jupyter:clean"
+
+
