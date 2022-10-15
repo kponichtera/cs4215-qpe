@@ -21,6 +21,7 @@ from fltk.util.config import DistributedConfig, FedLearnerConfig, retrieve_confi
     DistLearnerConfig
 
 from fltk.util.environment import retrieve_or_init_env, retrieve_env_config
+from fltk.util.statistics.arrival_time_estimator import ArrivalTimeEstimator
 
 # Define types for clarity in execution
 
@@ -107,8 +108,9 @@ def exec_orchestrator(args: Namespace = None, conf: DistributedConfig = None, re
 
     # TODO: Move ClusterManager one level up, to allow for re-use
     cluster_manager = ClusterManager()
+    arrival_time_estimator = ArrivalTimeEstimator()
     arrival_generator = get_arrival_generator(conf, args.experiment)
-    orchestrator = get_orchestrator(conf, cluster_manager, arrival_generator)
+    orchestrator = get_orchestrator(conf, cluster_manager, arrival_generator, arrival_time_estimator)
 
     pool = ThreadPool(3)
 
