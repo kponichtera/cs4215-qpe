@@ -1,0 +1,7 @@
+version: 3
+
+tasks:
+  init: ["terraform init -reconfigure"]
+  plan: ["terraform plan -var project_id={{.PROJECT_ID}}"]
+  apply: ["terraform apply -auto-approve -var project_id={{.PROJECT_ID}}"]
+  destroy: ["terraform destroy -auto-approve -var project_id={{.PROJECT_ID}}"]

@@ -12,6 +12,14 @@ vars:
   PROJECT_ID: "test-bed-fltk"
   DOCKER_IMAGE_NAME: "gcr.io/{{.PROJECT_ID}}/fltk"
 
+includes:
+  terraform-gke:
+    dir: "terraform/terraform-gke"
+    taskfile: "terraform/Taskfile-terraform.yml"
+  terraform-dependencies:
+    dir: "terraform/terraform-dependencies"
+    taskfile: "terraform/Taskfile-terraform.yml"
+
 tasks:
   # Jupyter
   venv-jupyter:create:
@@ -27,6 +35,7 @@ tasks:
   jupyter:
     deps: [ venv-jupyter:create ]
     cmds: [ "jupyter notebook jupyter/ --no-browser" ]
+
   # FLTK venv
   venv:create:
     cmds:
@@ -35,6 +44,7 @@ tasks:
     status: [ "test -d {{.VENV_FLTK}}" ]
   venv:install: "{{.VENV_FLTK_PIP}} install -r requirements-cpu.txt"
   venv:clean: "rm -r {{.VENV_FLTK}}"
+
   # FLTK
   fltk:dataset:
     deps: [ venv:create ]
@@ -56,10 +66,9 @@ tasks:
   docker:push:
     deps: [ docker:build ]
     cmds: [ "docker push {{.DOCKER_IMAGE_NAME}}" ]
+
   # Cleanup
   clean:
     deps:
       - "venv:clean"
       - "venv-jupyter:clean"
-
-
