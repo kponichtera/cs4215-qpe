@@ -10,6 +10,9 @@
       "image": "gcr.io/test-bed-fltk/fltk:latest",
       "namespace": "test"
    },
+   "scheduling_config": {
+      "arrival_rate_thresholds": [1.0, 2.0, 3.0, 4.0]
+   },
    "execution_config": {
       "duration": 60,
       "experiment_prefix": "cloud_experiment",

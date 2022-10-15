@@ -54,7 +54,7 @@ tasks:
       - >
         {{.VENV_FLTK_PYTHON}} -m fltk cluster
         configs/example_cloud_experiment.json
-        configs/experiment_tasks/4000_4000_3.json
+        configs/distributed_tasks/example_arrival_config.json
         -l True
 
   # Docker

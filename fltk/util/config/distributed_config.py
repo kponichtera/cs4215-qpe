@@ -133,6 +133,10 @@ class ClusterConfig:
         """
         self.image = os.environ.get('IMAGE_NAME')
 
+@dataclass_json
+@dataclass
+class SchedulerConfig:
+    arrival_rate_thresholds: List[float]
 
 @dataclass_json
 @dataclass
@@ -147,6 +151,7 @@ class DistributedConfig:
 
     """
     execution_config: ExecutionConfig
+    scheduling_config: SchedulerConfig
     cluster_config: ClusterConfig = field(metadata=config(field_name="cluster"))
     config_path: Optional[Path] = None
 
