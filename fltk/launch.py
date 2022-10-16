@@ -22,7 +22,7 @@ from fltk.util.config import DistributedConfig, FedLearnerConfig, retrieve_confi
     DistLearnerConfig
 
 from fltk.util.environment import retrieve_or_init_env, retrieve_env_config
-from fltk.util.scaler.scaler import ClusterScaler
+from fltk.util.scaling.scaler import ClusterScaler
 from fltk.util.statistics.arrival_time_estimator import ArrivalRateEstimator
 
 # Define types for clarity in execution

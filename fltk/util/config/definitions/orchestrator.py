@@ -4,7 +4,7 @@ from enum import unique, Enum
 from pathlib import Path
 
 from fltk.core.distributed import Orchestrator, BatchOrchestrator, SimulatedOrchestrator
-from fltk.util.scaler.scaler import ClusterScaler
+from fltk.util.scaling.scaler import ClusterScaler
 from fltk.util.statistics.arrival_time_estimator import ArrivalRateEstimator
 from fltk.util.task.generator import SequentialArrivalGenerator, SimulatedArrivalGenerator
 

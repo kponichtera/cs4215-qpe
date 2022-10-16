@@ -18,7 +18,7 @@ from kubernetes.client import V1ConfigMap, V1ObjectMeta
 
 from fltk.core.distributed.dist_node import DistNode
 from fltk.util.cluster.client import construct_job, ClusterManager
-from fltk.util.scaler.scaler import ClusterScaler
+from fltk.util.scaling.scaler import ClusterScaler
 from fltk.util.statistics.arrival_time_estimator import ArrivalRateEstimator
 from fltk.util.task import get_job_arrival_class, DistributedArrivalTask, FederatedArrivalTask, ArrivalTask
 from fltk.util.task.arrival_task import HistoricalArrivalTask, _ArrivalTask

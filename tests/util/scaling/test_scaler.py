@@ -2,7 +2,7 @@ import unittest
 
 from fltk.util.cluster.api_client import ClusterApiClient
 from fltk.util.config.distributed_config import ScalingConfig
-from fltk.util.scaler.scaler import ClusterScaler
+from fltk.util.scaling.scaler import ClusterScaler
 from fltk.util.statistics.arrival_time_estimator import Estimator
 
 
