@@ -11,6 +11,7 @@
       "namespace": "test"
    },
    "scheduling_config": {
+      "node_pool_name": "projects/test-bed-fltk-kponichtera/locations/us-central1-c/clusters/fltk-testbed-cluster/nodePools/medium-fltk-pool-1",
       "arrival_rate_thresholds": [1.0, 2.0, 3.0, 4.0]
    },
    "execution_config": {

@@ -11,6 +11,7 @@ import torch.distributed as dist
 from kubernetes import config
 from torch.distributed import rpc
 from fltk.core.distributed import DistClient, download_datasets
+from fltk.util.cluster.api_client import GKEClusterApiClient
 from fltk.util.config.definitions.orchestrator import get_orchestrator, get_arrival_generator, OrchestratorType
 from fltk.core import Client, Federator
 from fltk.nets.util.reproducability import init_reproducibility, init_learning_reproducibility
@@ -21,7 +22,8 @@ from fltk.util.config import DistributedConfig, FedLearnerConfig, retrieve_confi
     DistLearnerConfig
 
 from fltk.util.environment import retrieve_or_init_env, retrieve_env_config
-from fltk.util.statistics.arrival_time_estimator import ArrivalTimeEstimator
+from fltk.util.scaler.scaler import ClusterScaler
+from fltk.util.statistics.arrival_time_estimator import ArrivalRateEstimator
 
 # Define types for clarity in execution
 
@@ -108,11 +110,13 @@ def exec_orchestrator(args: Namespace = None, conf: DistributedConfig = None, re
 
     # TODO: Move ClusterManager one level up, to allow for re-use
     cluster_manager = ClusterManager()
-    arrival_time_estimator = ArrivalTimeEstimator()
+    cluster_api_client = GKEClusterApiClient(conf.scaling_config)
+    arrival_time_estimator = ArrivalRateEstimator()
+    cluster_scaler = ClusterScaler(conf.scaling_config, arrival_time_estimator, cluster_api_client)
     arrival_generator = get_arrival_generator(conf, args.experiment)
-    orchestrator = get_orchestrator(conf, cluster_manager, arrival_generator, arrival_time_estimator)
+    orchestrator = get_orchestrator(conf, cluster_manager, cluster_scaler, arrival_generator, arrival_time_estimator)
 
-    pool = ThreadPool(3)
+    pool = ThreadPool(4)
 
     logging.info("Starting cluster manager")
     pool.apply(cluster_manager.start)
@@ -120,6 +124,10 @@ def exec_orchestrator(args: Namespace = None, conf: DistributedConfig = None, re
     logging.info("Starting arrival generator")
     arv_gen_args, kwd_args = get_arrival_generator_args(conf, replication)
     pool.apply_async(arrival_generator.start, args=arv_gen_args, kwds=kwd_args)
+
+    logging.info("Starting cluster scaler")
+    pool.apply(cluster_scaler.start)
+
     logging.info("Starting orchestrator")
     pool.apply(orchestrator.run, kwds={"experiment_replication": replication})
 

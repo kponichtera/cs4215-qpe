@@ -18,7 +18,8 @@ from kubernetes.client import V1ConfigMap, V1ObjectMeta
 
 from fltk.core.distributed.dist_node import DistNode
 from fltk.util.cluster.client import construct_job, ClusterManager
-from fltk.util.statistics.arrival_time_estimator import ArrivalTimeEstimator
+from fltk.util.scaler.scaler import ClusterScaler
+from fltk.util.statistics.arrival_time_estimator import ArrivalRateEstimator
 from fltk.util.task import get_job_arrival_class, DistributedArrivalTask, FederatedArrivalTask, ArrivalTask
 from fltk.util.task.arrival_task import HistoricalArrivalTask, _ArrivalTask
 from fltk.util.task.generator import ArrivalGenerator
@@ -143,11 +144,12 @@ class Orchestrator(DistNode, abc.ABC):
     completed_tasks: Set[_ArrivalTask] = set()
     SLEEP_TIME = 5
 
-    def __init__(self, cluster_mgr: ClusterManager, arv_gen: ArrivalGenerator,
-                 arrival_time_estimator: ArrivalTimeEstimator, config: DistributedConfig):
+    def __init__(self, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler, arv_gen: ArrivalGenerator,
+                 arrival_time_estimator: ArrivalRateEstimator, config: DistributedConfig):
         self._logger = logging.getLogger('Orchestrator')
         self._logger.debug("Loading in-cluster configuration")
         self._cluster_mgr = cluster_mgr
+        self._cluster_scaler = cluster_scaler
         self._arrival_generator = arv_gen
         self._arrival_time_estimator = arrival_time_estimator
         self._config = config
@@ -165,6 +167,7 @@ class Orchestrator(DistNode, abc.ABC):
         self._logger.info("Received stop signal for the Orchestrator.")
         self._alive = False
 
+        self._cluster_scaler.stop()
         self._cluster_mgr.stop()
 
     @abc.abstractmethod
@@ -253,9 +256,9 @@ class SimulatedOrchestrator(Orchestrator):
     are supported.
     """
 
-    def __init__(self, cluster_mgr: ClusterManager, arrival_generator: ArrivalGenerator,
-                 arrival_time_estimator: ArrivalTimeEstimator,  config: DistributedConfig):
-        super().__init__(cluster_mgr, arrival_generator, arrival_time_estimator, config)
+    def __init__(self, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler, arrival_generator: ArrivalGenerator,
+                 arrival_time_estimator: ArrivalRateEstimator, config: DistributedConfig):
+        super().__init__(cluster_mgr, cluster_scaler, arrival_generator, arrival_time_estimator, config)
 
     def run(self, clear: bool = False, experiment_replication: int = -1) -> None:
         self._alive = True
@@ -304,9 +307,9 @@ class BatchOrchestrator(Orchestrator):
     Orchestrator implementation to allow for running all experiments that were defined in one go.
     """
 
-    def __init__(self, cluster_mgr: ClusterManager, arrival_generator: ArrivalGenerator,
-                 arrival_time_estimator: ArrivalTimeEstimator, config: DistributedConfig):
-        super().__init__(cluster_mgr, arrival_generator, arrival_time_estimator, config)
+    def __init__(self, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler, arrival_generator: ArrivalGenerator,
+                 arrival_time_estimator: ArrivalRateEstimator, config: DistributedConfig):
+        super().__init__(cluster_mgr, cluster_scaler, arrival_generator, arrival_time_estimator, config)
 
     def run(self, clear: bool = False,
             experiment_replication: int = 1,

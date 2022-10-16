@@ -4,7 +4,8 @@ from enum import unique, Enum
 from pathlib import Path
 
 from fltk.core.distributed import Orchestrator, BatchOrchestrator, SimulatedOrchestrator
-from fltk.util.statistics.arrival_time_estimator import ArrivalTimeEstimator
+from fltk.util.scaler.scaler import ClusterScaler
+from fltk.util.statistics.arrival_time_estimator import ArrivalRateEstimator
 from fltk.util.task.generator import SequentialArrivalGenerator, SimulatedArrivalGenerator
 
 from typing import TYPE_CHECKING
@@ -21,8 +22,8 @@ class OrchestratorType(Enum):
     SIMULATED = 'simulated'
 
 
-def get_orchestrator(config: DistributedConfig, cluster_manager: ClusterManager,
-                     arrival_generator: ArrivalGenerator, arrival_time_estimator: ArrivalTimeEstimator) -> Orchestrator:
+def get_orchestrator(config: DistributedConfig, cluster_manager: ClusterManager, cluster_scaler: ClusterScaler,
+                     arrival_generator: ArrivalGenerator, arrival_time_estimator: ArrivalRateEstimator) -> Orchestrator:
     """Retrieve Orchestrator type given a Distributed (experiment) configuration. This allows for defining the
     type of experiment (Batch or Simulated arrivals) once, and letting the Orchestrator implementation
     make sure that the tasks are scheduled correctly.
@@ -31,7 +32,7 @@ def get_orchestrator(config: DistributedConfig, cluster_manager: ClusterManager,
       config (DistributedConfig): Distributed (cluster) configuration object for experiments.
       cluster_manager (ClusterManager):
       arrival_generator (ArrivalGenerator):
-      arrival_time_estimator (ArrivalTimeEstimator):
+      arrival_time_estimator (ArrivalRateEstimator):
 
     Returns:
       Type[Orchestrator]: Type of Orchestrator as requested by configuration object.
@@ -43,7 +44,7 @@ def get_orchestrator(config: DistributedConfig, cluster_manager: ClusterManager,
     }
 
     orchestrator_type = __lookup.get(config.cluster_config.orchestrator.orchestrator_type, None)
-    return orchestrator_type(cluster_manager, arrival_generator, arrival_time_estimator, config)
+    return orchestrator_type(cluster_manager, cluster_scaler, arrival_generator, arrival_time_estimator, config)
 
 
 def get_arrival_generator(config: DistributedConfig, experiment: str) -> ArrivalGenerator:
