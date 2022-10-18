@@ -25,7 +25,7 @@ tasks:
   venv-jupyter:create:
     cmds:
       - "python -m venv {{.VENV_JUPYTER}}"
-      - task: venv:install
+      - task: venv-jupyter:install
     status: [ "test -d {{.VENV_JUPYTER}}" ]
   venv-jupyter:install:
     cmds:
