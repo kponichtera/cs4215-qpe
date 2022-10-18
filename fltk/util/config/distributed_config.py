@@ -6,7 +6,8 @@ from typing import Optional, List
 
 from dataclasses_json import config, dataclass_json
 
-from fltk.util.config.definitions import OrchestratorType
+import fltk.util.config.definitions
+# from  import OrchestratorType
 
 from typing import TYPE_CHECKING
 
@@ -82,7 +83,7 @@ class ExecutionConfig:
 @dataclass
 class OrchestratorConfig:
     """ """
-    orchestrator_type: OrchestratorType
+    orchestrator_type: fltk.util.config.definitions.OrchestratorType
     parallel_execution: bool = True
 
 
@@ -132,6 +133,7 @@ class ClusterConfig:
 
         """
         self.image = os.environ.get('IMAGE_NAME')
+
 
 @dataclass_json
 @dataclass
