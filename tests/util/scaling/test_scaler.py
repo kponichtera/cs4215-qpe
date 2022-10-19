@@ -28,7 +28,7 @@ class MockClusterApiClient(ClusterApiClient):
         self.current_node_pool_size = node_pool_size
 
 
-class ClusterScalerScalingTest(unittest.TestCase):
+class TestClusterScalerScaling(unittest.TestCase):
 
     def setUp(self):
         self.scaling_config = ScalingConfig(
