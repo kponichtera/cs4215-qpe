@@ -24,4 +24,4 @@ class ArrivalRateEstimator(Estimator):
         self.job_execution_times.append(job_execution_time)
 
     def estimate_arrival_rate(self) -> float:
-        return 2.5  # 3 nodes
+        return 6  # 3 nodes

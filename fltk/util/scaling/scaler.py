@@ -15,6 +15,7 @@ class ClusterScaler:
         self.__thread_pool: ThreadPool = ThreadPool(processes=2)
         self._logger = logging.getLogger('ClusterScaler')
 
+        self._dry_run = conf.dry_run
         self._arrival_time_thresholds = conf.arrival_rate_thresholds
         self._arrival_rate_estimator = estimator
         self._cluster_api_client = cluster_api_client
@@ -44,8 +45,12 @@ class ClusterScaler:
             required_node_count = self._determine_requested_node_count()
 
             if current_node_count != required_node_count:
-                self._logger.info(f"Scaling cluster from {current_node_count} to {required_node_count} nodes")
-                self._cluster_api_client.set_node_pool_size(required_node_count)
+                if not self._dry_run:
+                    self._logger.info(f"Scaling cluster from {current_node_count} to {required_node_count} nodes")
+                    self._cluster_api_client.set_node_pool_size(required_node_count)
+                else:
+                    self._logger.info(f"DRY RUN - would scale cluster from {current_node_count} to {required_node_count} nodes")
+
 
         except Exception as e:
             self._logger.error(f"Error when scaling the cluster. Reason: {e}")

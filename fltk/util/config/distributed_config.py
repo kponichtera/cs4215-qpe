@@ -141,12 +141,14 @@ class ScalingConfig:
     """
     Configuration of the custom cluster scaling.
 
+    dry_run: If true then no changed will be done to the cluster
     node_pool_name: name of the node pool to scale (e.g. projects/*/locations/*/clusters/*/nodePools/*)
     arrival_rate_thresholds: the list of arrival rate thresholds, the crossing of which trigger cluster scaling.
                              For instance, for the list [1, 2, 3], crossing the threshold of 1 will cause the cluster
                              to be scaled up to 2 nodes, crossing arrival rate of 2 will scale up to 3 nodes and so on.
     scale_down_grace_period: the minimum amount of time (in seconds) between cluster scale-downs
     """
+    dry_run: bool
     node_pool_name: str
     arrival_rate_thresholds: List[float]
     scale_down_grace_period: int = 300

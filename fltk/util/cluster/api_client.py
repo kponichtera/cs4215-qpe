@@ -37,4 +37,4 @@ class GKEClusterApiClient(ClusterApiClient):
         request.name = self._node_pool_name
         request.node_count = node_count
 
-        response = self._container_client.set_node_pool_size(request=request)
+        self._container_client.set_node_pool_size(request=request)
