@@ -15,7 +15,7 @@
       "arrival_rate_thresholds": [1.0, 2.0, 3.0, 4.0]
    },
    "execution_config": {
-      "duration": 60,
+      "duration": 600,
       "experiment_prefix": "cloud_experiment",
       "cuda": false,
       "tensorboard": {

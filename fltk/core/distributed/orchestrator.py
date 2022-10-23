@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import collections
+import dateutil.parser
 import logging
 import re
 import time
@@ -218,6 +219,36 @@ class Orchestrator(DistNode, abc.ABC):
             self._v1.create_namespaced_config_map(self._config.cluster_config.namespace,
                                                   config_map)
 
+    def collect_completed_jobs(self):
+        # Set of tuples
+        _completed_tasks = set()
+        _completed_durations = list()
+
+        logging.info(f"Collecting completed jobs...")
+        for task in self.deployed_tasks:
+            try:
+                job_status = self._client.get_job_status(name=f"trainjob-{task.id}",
+                                                         namespace='test')
+            except Exception as e:
+                logging.debug(msg=f"Could not retrieve job_status for {task.id}")
+                job_status = None
+
+            if job_status and job_status in {'Completed', 'Failed', 'Succeeded'}:
+                completion_time_iso = self._client.get(name=f"trainjob-{task.id}", namespace='test')['status']['completionTime']
+                task_duration = dateutil.parser.isoparse(completion_time_iso).timestamp() - task.creation_time
+                logging.info(f"{task.id} was completed with status: {job_status} after {task_duration} seconds, moving to completed")
+                _completed_tasks.add(task)
+                _completed_durations.append(task_duration)
+            else:
+                logging.info(
+                    f"Waiting for {task.id} to complete, {self.pending_tasks.qsize()} pending, {self._arrival_generator.arrivals.qsize()} arrivals, {len(self.completed_tasks)}")
+
+        for duration in _completed_durations:
+            self._arrival_rate_estimator.new_job_finish(duration)
+
+        self.completed_tasks.update(_completed_tasks)
+        self.deployed_tasks.difference_update(_completed_tasks)
+
     def wait_for_jobs_to_complete(self, others: Optional[List[str]] = None):
         """
         Function to wait for all tasks to complete. This allows to wait for all the resources to free-up after running
@@ -231,22 +262,7 @@ class Orchestrator(DistNode, abc.ABC):
             historical_tasks = map(HistoricalArrivalTask, ids)
             self.deployed_tasks.update(historical_tasks)
         while len(self.deployed_tasks) > 0:
-            task_to_move = set()
-            for task in self.deployed_tasks:
-                try:
-                    job_status = self._client.get_job_status(name=f"trainjob-{task.id}",
-                                                             namespace='test')
-                except Exception as e:
-                    logging.debug(msg=f"Could not retrieve job_status for {task.id}")
-                    job_status = None
-
-                if job_status and job_status in {'Completed', 'Failed', 'Succeeded'}:
-                    logging.info(f"{task.id} was completed with status: {job_status}, moving to completed")
-                    task_to_move.add(task)
-                else:
-                    logging.info(f"Waiting for {task.id} to complete, {self.pending_tasks.qsize()} pending, {self._arrival_generator.arrivals.qsize()} arrivals")
-            self.completed_tasks.update(task_to_move)
-            self.deployed_tasks.difference_update(task_to_move)
+            self.collect_completed_jobs()
             time.sleep(self.SLEEP_TIME)
 
 
@@ -266,6 +282,9 @@ class SimulatedOrchestrator(Orchestrator):
         if clear:
             self._clear_jobs()
         while self._alive and time.time() - start_time < self._config.get_duration():
+            # Check if some jobs were completed
+            self.collect_completed_jobs()
+
             # 1. Check arrivals
             # If new arrivals, store them in arrival list
             while not self._arrival_generator.arrivals.empty():
@@ -345,6 +364,10 @@ class BatchOrchestrator(Orchestrator):
         while self._arrival_generator.arrivals.qsize() == 0:
             self._logger.info("Waiting for first arrival!")
             time.sleep(self.SLEEP_TIME)
+
+        # Check if some jobs were completed
+        self.collect_completed_jobs()
+
         # 1. Check arrivals
         # If new arrivals, store them in arrival PriorityQueue
         while not self._arrival_generator.arrivals.empty():

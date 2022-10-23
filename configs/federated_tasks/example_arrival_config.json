@@ -24,11 +24,11 @@
         "hyperParameters": {
           "default": {
             "batchSize": 1,
-            "testBatchSize": 16,
+            "testBatchSize": 32,
             "learningRateDecay": 0.1,
             "optimizerConfig": {
               "type": "SGD",
-              "learningRate": 0.01,
+              "learningRate": 0.1,
               "momentum": 0.1
             },
             "schedulerConfig": {
@@ -40,7 +40,7 @@
           "configurations": {
             "Master": null,
             "Worker": {
-              "batchSize": 16,
+              "batchSize": 32,
               "optimizerConfig": {
                 "learningRate": 0.1
               },

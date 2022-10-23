@@ -11,7 +11,7 @@ class Estimator:
 
 class ArrivalRateEstimator(Estimator):
     job_counter: int = 0
-    job_execution_times: List[float]
+    job_execution_times: List[float] = list()
 
     def __init__(self):
         super().__init__()
@@ -24,4 +24,4 @@ class ArrivalRateEstimator(Estimator):
         self.job_execution_times.append(job_execution_time)
 
     def estimate_arrival_rate(self) -> float:
-        return 2.5
+        return 2.5  # 3 nodes
