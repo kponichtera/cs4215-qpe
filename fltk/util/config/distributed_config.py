@@ -151,7 +151,7 @@ class ScalingConfig:
     dry_run: bool
     node_pool_name: str
     arrival_rate_thresholds: List[float]
-    scale_down_grace_period: int = 300
+    scale_down_grace_period: int = 120
 
 @dataclass_json
 @dataclass

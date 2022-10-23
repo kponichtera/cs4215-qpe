@@ -241,7 +241,7 @@ class Orchestrator(DistNode, abc.ABC):
                 _completed_durations.append(task_duration)
             else:
                 logging.info(
-                    f"Waiting for {task.id} to complete, {self.pending_tasks.qsize()} pending, {self._arrival_generator.arrivals.qsize()} arrivals, {len(self.completed_tasks)}")
+                    f"Waiting for {task.id} to complete, {self.pending_tasks.qsize()} pending, {self._arrival_generator.arrivals.qsize()} arrivals, {len(self.completed_tasks)} completed")
 
         for duration in _completed_durations:
             self._arrival_rate_estimator.new_job_finish(duration)
