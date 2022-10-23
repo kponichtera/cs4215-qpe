@@ -1,6 +1,6 @@
 import unittest
 
-from fltk.util.statistics.arrival_time_estimator import ArrivalRateEstimator
+from fltk.util.statistics.arrival_rate_estimator import ArrivalRateEstimator
 
 
 class ArrivalRateEstimatorTest(unittest.TestCase):

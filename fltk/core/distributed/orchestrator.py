@@ -19,7 +19,7 @@ from kubernetes.client import V1ConfigMap, V1ObjectMeta
 from fltk.core.distributed.dist_node import DistNode
 from fltk.util.cluster.client import construct_job, ClusterManager
 from fltk.util.scaling.scaler import ClusterScaler
-from fltk.util.statistics.arrival_time_estimator import ArrivalRateEstimator
+from fltk.util.statistics.arrival_rate_estimator import ArrivalRateEstimator
 from fltk.util.task import get_job_arrival_class, DistributedArrivalTask, FederatedArrivalTask, ArrivalTask
 from fltk.util.task.arrival_task import HistoricalArrivalTask, _ArrivalTask
 from fltk.util.task.generator import ArrivalGenerator
@@ -145,13 +145,13 @@ class Orchestrator(DistNode, abc.ABC):
     SLEEP_TIME = 5
 
     def __init__(self, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler, arv_gen: ArrivalGenerator,
-                 arrival_time_estimator: ArrivalRateEstimator, config: DistributedConfig):
+                 arrival_rate_estimator: ArrivalRateEstimator, config: DistributedConfig):
         self._logger = logging.getLogger('Orchestrator')
         self._logger.debug("Loading in-cluster configuration")
         self._cluster_mgr = cluster_mgr
         self._cluster_scaler = cluster_scaler
         self._arrival_generator = arv_gen
-        self._arrival_time_estimator = arrival_time_estimator
+        self._arrival_rate_estimator = arrival_rate_estimator
         self._config = config
 
         # API to interact with the cluster.
@@ -257,8 +257,8 @@ class SimulatedOrchestrator(Orchestrator):
     """
 
     def __init__(self, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler, arrival_generator: ArrivalGenerator,
-                 arrival_time_estimator: ArrivalRateEstimator, config: DistributedConfig):
-        super().__init__(cluster_mgr, cluster_scaler, arrival_generator, arrival_time_estimator, config)
+                 arrival_rate_estimator: ArrivalRateEstimator, config: DistributedConfig):
+        super().__init__(cluster_mgr, cluster_scaler, arrival_generator, arrival_rate_estimator, config)
 
     def run(self, clear: bool = False, experiment_replication: int = -1) -> None:
         self._alive = True
@@ -308,8 +308,8 @@ class BatchOrchestrator(Orchestrator):
     """
 
     def __init__(self, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler, arrival_generator: ArrivalGenerator,
-                 arrival_time_estimator: ArrivalRateEstimator, config: DistributedConfig):
-        super().__init__(cluster_mgr, cluster_scaler, arrival_generator, arrival_time_estimator, config)
+                 arrival_rate_estimator: ArrivalRateEstimator, config: DistributedConfig):
+        super().__init__(cluster_mgr, cluster_scaler, arrival_generator, arrival_rate_estimator, config)
 
     def run(self, clear: bool = False,
             experiment_replication: int = 1,

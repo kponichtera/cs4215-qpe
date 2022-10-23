@@ -4,7 +4,7 @@ from multiprocessing.pool import ThreadPool
 
 from fltk.util.cluster.api_client import ClusterApiClient
 from fltk.util.config.distributed_config import ScalingConfig
-from fltk.util.statistics.arrival_time_estimator import Estimator
+from fltk.util.statistics.arrival_rate_estimator import Estimator
 
 
 class ClusterScaler:
@@ -16,7 +16,7 @@ class ClusterScaler:
         self._logger = logging.getLogger('ClusterScaler')
 
         self._arrival_time_thresholds = conf.arrival_rate_thresholds
-        self._arrival_time_estimator = estimator
+        self._arrival_rate_estimator = estimator
         self._cluster_api_client = cluster_api_client
 
         self.__last_scaling_time = 0
@@ -44,14 +44,14 @@ class ClusterScaler:
             required_node_count = self._determine_requested_node_count()
 
             if current_node_count != required_node_count:
-                self._logger.info(f"Scaling cluster form {current_node_count} to {required_node_count} nodes")
+                self._logger.info(f"Scaling cluster from {current_node_count} to {required_node_count} nodes")
                 self._cluster_api_client.set_node_pool_size(required_node_count)
 
         except Exception as e:
             self._logger.error(f"Error when scaling the cluster. Reason: {e}")
 
     def _determine_requested_node_count(self) -> int:
-        arrival_rate = self._arrival_time_estimator.estimate_arrival_rate()
+        arrival_rate = self._arrival_rate_estimator.estimate_arrival_rate()
         self._logger.debug(f"Current arrival rate: {arrival_rate}")
 
         # If arrival rate is smaller than the first threshold, keep only one node

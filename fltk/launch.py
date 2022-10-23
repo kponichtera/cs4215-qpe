@@ -23,7 +23,7 @@ from fltk.util.config import DistributedConfig, FedLearnerConfig, retrieve_confi
 
 from fltk.util.environment import retrieve_or_init_env, retrieve_env_config
 from fltk.util.scaling.scaler import ClusterScaler
-from fltk.util.statistics.arrival_time_estimator import ArrivalRateEstimator
+from fltk.util.statistics.arrival_rate_estimator import ArrivalRateEstimator
 
 # Define types for clarity in execution
 
@@ -111,10 +111,10 @@ def exec_orchestrator(args: Namespace = None, conf: DistributedConfig = None, re
     # TODO: Move ClusterManager one level up, to allow for re-use
     cluster_manager = ClusterManager()
     cluster_api_client = GKEClusterApiClient(conf.scaling_config)
-    arrival_time_estimator = ArrivalRateEstimator()
-    cluster_scaler = ClusterScaler(conf.scaling_config, arrival_time_estimator, cluster_api_client)
+    arrival_rate_estimator = ArrivalRateEstimator()
+    cluster_scaler = ClusterScaler(conf.scaling_config, arrival_rate_estimator, cluster_api_client)
     arrival_generator = get_arrival_generator(conf, args.experiment)
-    orchestrator = get_orchestrator(conf, cluster_manager, cluster_scaler, arrival_generator, arrival_time_estimator)
+    orchestrator = get_orchestrator(conf, cluster_manager, cluster_scaler, arrival_generator, arrival_rate_estimator)
 
     pool = ThreadPool(4)
 
