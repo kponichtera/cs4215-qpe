@@ -47,7 +47,7 @@ def get_orchestrator(config: DistributedConfig, cluster_manager: ClusterManager,
     return orchestrator_type(cluster_manager, cluster_scaler, arrival_generator, arrival_rate_estimator, config)
 
 
-def get_arrival_generator(config: DistributedConfig, experiment: str) -> ArrivalGenerator:
+def get_arrival_generator(config: DistributedConfig, arrival_rate_estimator: ArrivalRateEstimator, experiment: str) -> ArrivalGenerator:
     """Retrieval function to create generator functions
 
     Args:
@@ -63,4 +63,4 @@ def get_arrival_generator(config: DistributedConfig, experiment: str) -> Arrival
         OrchestratorType.SIMULATED: SimulatedArrivalGenerator
     }
 
-    return __lookup.get(config.cluster_config.orchestrator.orchestrator_type, None)(Path(experiment))
+    return __lookup.get(config.cluster_config.orchestrator.orchestrator_type, None)(arrival_rate_estimator, Path(experiment))

@@ -113,7 +113,7 @@ def exec_orchestrator(args: Namespace = None, conf: DistributedConfig = None, re
     cluster_api_client = GKEClusterApiClient(conf.scaling_config)
     arrival_rate_estimator = ArrivalRateEstimator()
     cluster_scaler = ClusterScaler(conf.scaling_config, arrival_rate_estimator, cluster_api_client)
-    arrival_generator = get_arrival_generator(conf, args.experiment)
+    arrival_generator = get_arrival_generator(conf, arrival_rate_estimator, args.experiment)
     orchestrator = get_orchestrator(conf, cluster_manager, cluster_scaler, arrival_generator, arrival_rate_estimator)
 
     pool = ThreadPool(4)
