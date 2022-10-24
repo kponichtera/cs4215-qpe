@@ -9,26 +9,26 @@
           "dataset": "mnist"
         },
         "systemParameters": {
-          "dataParallelism": 4,
+          "dataParallelism": 3,
           "configurations": {
             "Master": {
-              "cores": "1000m",
-              "memory": "1Gi"
+              "cores": "4000m",
+              "memory": "4000Mi"
             },
             "Worker": {
-              "cores": "750m",
-              "memory": "1Gi"
+              "cores": "4000m",
+              "memory": "4000Mi"
             }
           }
         },
         "hyperParameters": {
           "default": {
-            "batchSize": 128,
-            "testBatchSize": 128,
-            "learningRateDecay": 0.0002,
+            "batchSize": 1,
+            "testBatchSize": 32,
+            "learningRateDecay": 0.1,
             "optimizerConfig": {
               "type": "SGD",
-              "learningRate": 0.01,
+              "learningRate": 0.1,
               "momentum": 0.1
             },
             "schedulerConfig": {
@@ -40,9 +40,9 @@
           "configurations": {
             "Master": null,
             "Worker": {
-              "batchSize": 500,
+              "batchSize": 32,
               "optimizerConfig": {
-                "learningRate": 0.05
+                "learningRate": 0.1
               },
               "schedulerConfig": {
                 "schedulerStepSize": 2000
@@ -51,8 +51,8 @@
           }
         },
         "learningParameters": {
-          "totalEpochs": 0,
-          "rounds": 5,
+          "totalEpochs": 1,
+          "rounds": 1,
           "epochsPerRound": 1,
           "cuda": false,
           "clientsPerRound": 2,
