@@ -43,7 +43,7 @@ class ClusterScaler:
     def scale(self):
         try:
             current_node_count = self._cluster_api_client.get_node_pool_size()
-            required_node_count = self._determine_requested_node_count()
+            required_node_count = current_node_count + self._determine_requested_node_count()
 
             now = time.time()
             scale_down = required_node_count < current_node_count
@@ -64,18 +64,15 @@ class ClusterScaler:
             self._logger.error(f"Error when scaling the cluster. Reason: {e}")
 
     def _determine_requested_node_count(self) -> int:
-        arrival_rate = self._arrival_rate_estimator.estimate_arrival_rate()
-        self._logger.debug(f"Current arrival rate: {arrival_rate}")
+        ratio = self._arrival_rate_estimator.estimate_arrival_rate() / self._arrival_rate_estimator.estimate_service_rate()
+        self._logger.debug(f"Current arrival rate and service rate ratio: {ratio}")
 
-        # If arrival rate is smaller than the first threshold, keep only one node
-        if arrival_rate < self._arrival_time_thresholds[0]:
+        # If the ratio is smaller than the lower threshold => scale down 1 node
+        if ratio < self._arrival_time_thresholds[0]:
+            return - 1
+        # If the ratio is smaller than the lower threshold => scale up 1 node
+        elif ratio > self._arrival_time_thresholds[1]:
             return 1
-
-        # If arrival rate is between ith and i+1st threshold, return the amount of nodes that should be there
-        for i in range(len(self._arrival_time_thresholds) - 1):
-            if self._arrival_time_thresholds[i] < arrival_rate < self._arrival_time_thresholds[i+1]:
-                return i + 2
-
-        # If arrival rate is larger than the biggest threshold, return the maximum size of cluster
-        if arrival_rate > self._arrival_time_thresholds[-1]:
-            return len(self._arrival_time_thresholds) + 1
+        # Keep the number of nodes => we want the utilization to be between 0.7 and 0.8
+        else:
+            return 0
