@@ -13,13 +13,25 @@ class Estimator:
     def estimate_service_rate(self) -> float:
         raise NotImplementedError()
 
+    @abc.abstractmethod
+    def reset(self):
+        raise NotImplementedError()
+
 
 class ArrivalRateEstimator(Estimator):
+
     inter_arrival_counter: int = 0
     completed_jobs_counter = 0
     service_time_sum = 0
     previous_arrival_timestamp = None
     inter_arrival_sum = 0
+
+    def reset(self):
+        self.inter_arrival_counter: int = 0
+        self.completed_jobs_counter = 0
+        self.service_time_sum = 0
+        self.previous_arrival_timestamp = None
+        self.inter_arrival_sum = 0
 
     def __init__(self):
         super().__init__()
