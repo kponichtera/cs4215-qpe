@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import collections
+import dateutil.parser
 import logging
 import re
 import time
@@ -18,6 +19,8 @@ from kubernetes.client import V1ConfigMap, V1ObjectMeta
 
 from fltk.core.distributed.dist_node import DistNode
 from fltk.util.cluster.client import construct_job, ClusterManager
+from fltk.util.scaling.scaler import ClusterScaler
+from fltk.util.statistics.arrival_rate_estimator import ArrivalRateEstimator
 from fltk.util.task import get_job_arrival_class, DistributedArrivalTask, FederatedArrivalTask, ArrivalTask
 from fltk.util.task.arrival_task import HistoricalArrivalTask, _ArrivalTask
 from fltk.util.task.generator import ArrivalGenerator
@@ -142,11 +145,14 @@ class Orchestrator(DistNode, abc.ABC):
     completed_tasks: Set[_ArrivalTask] = set()
     SLEEP_TIME = 5
 
-    def __init__(self, cluster_mgr: ClusterManager, arv_gen: ArrivalGenerator, config: DistributedConfig):
+    def __init__(self, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler, arv_gen: ArrivalGenerator,
+                 arrival_rate_estimator: ArrivalRateEstimator, config: DistributedConfig):
         self._logger = logging.getLogger('Orchestrator')
         self._logger.debug("Loading in-cluster configuration")
         self._cluster_mgr = cluster_mgr
+        self._cluster_scaler = cluster_scaler
         self._arrival_generator = arv_gen
+        self._arrival_rate_estimator = arrival_rate_estimator
         self._config = config
 
         # API to interact with the cluster.
@@ -162,6 +168,7 @@ class Orchestrator(DistNode, abc.ABC):
         self._logger.info("Received stop signal for the Orchestrator.")
         self._alive = False
 
+        self._cluster_scaler.stop()
         self._cluster_mgr.stop()
 
     @abc.abstractmethod
@@ -212,6 +219,36 @@ class Orchestrator(DistNode, abc.ABC):
             self._v1.create_namespaced_config_map(self._config.cluster_config.namespace,
                                                   config_map)
 
+    def collect_completed_jobs(self):
+        # Set of tuples
+        _completed_tasks = set()
+        _completed_durations = list()
+
+        logging.info(f"Collecting completed jobs...")
+        for task in self.deployed_tasks:
+            try:
+                job_status = self._client.get_job_status(name=f"trainjob-{task.id}",
+                                                         namespace='test')
+            except Exception as e:
+                logging.debug(msg=f"Could not retrieve job_status for {task.id}")
+                job_status = None
+
+            if job_status and job_status in {'Completed', 'Failed', 'Succeeded'}:
+                completion_time_iso = self._client.get(name=f"trainjob-{task.id}", namespace='test')['status']['completionTime']
+                task_duration = dateutil.parser.isoparse(completion_time_iso).timestamp() - task.creation_time
+                logging.info(f"{task.id} was completed with status: {job_status} after {task_duration} seconds, moving to completed")
+                _completed_tasks.add(task)
+                _completed_durations.append(task_duration)
+            else:
+                logging.info(
+                    f"Waiting for {task.id} to complete, {self.pending_tasks.qsize()} pending, {self._arrival_generator.arrivals.qsize()} arrivals, {len(self.completed_tasks)} completed")
+
+        for duration in _completed_durations:
+            self._arrival_rate_estimator.new_job_finish(duration)
+
+        self.completed_tasks.update(_completed_tasks)
+        self.deployed_tasks.difference_update(_completed_tasks)
+
     def wait_for_jobs_to_complete(self, others: Optional[List[str]] = None):
         """
         Function to wait for all tasks to complete. This allows to wait for all the resources to free-up after running
@@ -225,22 +262,7 @@ class Orchestrator(DistNode, abc.ABC):
             historical_tasks = map(HistoricalArrivalTask, ids)
             self.deployed_tasks.update(historical_tasks)
         while len(self.deployed_tasks) > 0:
-            task_to_move = set()
-            for task in self.deployed_tasks:
-                try:
-                    job_status = self._client.get_job_status(name=f"trainjob-{task.id}",
-                                                             namespace='test')
-                except Exception as e:
-                    logging.debug(msg=f"Could not retrieve job_status for {task.id}")
-                    job_status = None
-
-                if job_status and job_status in {'Completed', 'Failed', 'Succeeded'}:
-                    logging.info(f"{task.id} was completed with status: {job_status}, moving to completed")
-                    task_to_move.add(task)
-                else:
-                    logging.info(f"Waiting for {task.id} to complete, {self.pending_tasks.qsize()} pending, {self._arrival_generator.arrivals.qsize()} arrivals")
-            self.completed_tasks.update(task_to_move)
-            self.deployed_tasks.difference_update(task_to_move)
+            self.collect_completed_jobs()
             time.sleep(self.SLEEP_TIME)
 
 
@@ -250,8 +272,9 @@ class SimulatedOrchestrator(Orchestrator):
     are supported.
     """
 
-    def __init__(self, cluster_mgr: ClusterManager, arrival_generator: ArrivalGenerator, config: DistributedConfig):
-        super().__init__(cluster_mgr, arrival_generator, config)
+    def __init__(self, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler, arrival_generator: ArrivalGenerator,
+                 arrival_rate_estimator: ArrivalRateEstimator, config: DistributedConfig):
+        super().__init__(cluster_mgr, cluster_scaler, arrival_generator, arrival_rate_estimator, config)
 
     def run(self, clear: bool = False, experiment_replication: int = -1) -> None:
         self._alive = True
@@ -259,6 +282,9 @@ class SimulatedOrchestrator(Orchestrator):
         if clear:
             self._clear_jobs()
         while self._alive and time.time() - start_time < self._config.get_duration():
+            # Check if some jobs were completed
+            self.collect_completed_jobs()
+
             # 1. Check arrivals
             # If new arrivals, store them in arrival list
             while not self._arrival_generator.arrivals.empty():
@@ -300,8 +326,9 @@ class BatchOrchestrator(Orchestrator):
     Orchestrator implementation to allow for running all experiments that were defined in one go.
     """
 
-    def __init__(self, cluster_mgr: ClusterManager, arrival_generator: ArrivalGenerator, config: DistributedConfig):
-        super().__init__(cluster_mgr, arrival_generator, config)
+    def __init__(self, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler, arrival_generator: ArrivalGenerator,
+                 arrival_rate_estimator: ArrivalRateEstimator, config: DistributedConfig):
+        super().__init__(cluster_mgr, cluster_scaler, arrival_generator, arrival_rate_estimator, config)
 
     def run(self, clear: bool = False,
             experiment_replication: int = 1,
@@ -337,6 +364,10 @@ class BatchOrchestrator(Orchestrator):
         while self._arrival_generator.arrivals.qsize() == 0:
             self._logger.info("Waiting for first arrival!")
             time.sleep(self.SLEEP_TIME)
+
+        # Check if some jobs were completed
+        self.collect_completed_jobs()
+
         # 1. Check arrivals
         # If new arrivals, store them in arrival PriorityQueue
         while not self._arrival_generator.arrivals.empty():

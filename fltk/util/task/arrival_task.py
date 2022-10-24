@@ -1,6 +1,7 @@
 import abc
 import collections
 import random
+import time
 import uuid
 from dataclasses import field, dataclass
 # noinspection PyUnresolvedReferences
@@ -24,13 +25,22 @@ class _ArrivalTask(abc.ABC):
     Private parent of ArrivalTasks, used internally for allowing to track
     """
     id: UUID = field(compare=False)  # pylint: disable=invalid-name
+    creation_time: float
+
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, _ArrivalTask):
+            return False
+
+        return o.id == self.id
+
 
 @dataclass(frozen=True)
 class HistoricalArrivalTask(abc.ABC):
     """
     Dataclass to contain historical tasks, allowing for keeping track of tasks deployed in older deployments.
     """
-    pass
+    def __eq__(self, o: object) -> bool:
+        return super.__eq__(self, o)
 
 
 @dataclass(frozen=True)
@@ -49,6 +59,9 @@ class ArrivalTask(_ArrivalTask):
     hyper_parameters: HyperParameters = field(compare=False)
     learning_parameters: LearningParameters = field(compare=False)
     priority: Optional[int] = None
+
+    def __eq__(self, o: object) -> bool:
+        return super.__eq__(self, o)
 
     @staticmethod
     @abc.abstractmethod
@@ -204,6 +217,9 @@ class DistributedArrivalTask(ArrivalTask):
     The tasks are by default sorted according to priority.
     """
 
+    def __eq__(self, o: object) -> bool:
+        return super.__eq__(self, o)
+
     @staticmethod
     def build(arrival: Arrival, u_id: uuid.UUID, replication: int) -> T:
         """
@@ -223,6 +239,7 @@ class DistributedArrivalTask(ArrivalTask):
         """
         task = DistributedArrivalTask(
                 id=u_id,
+                creation_time=time.time(),
                 network=arrival.get_network(),
                 priority=arrival.get_priority(),
                 dataset=arrival.get_dataset(),
@@ -245,6 +262,9 @@ class FederatedArrivalTask(ArrivalTask):
     Task describing configuration objects for running FederatedLearning experiments on K8s.
     """
 
+    def __eq__(self, o: object) -> bool:
+        return super.__eq__(self, o)
+
     @staticmethod
     def build(arrival: Arrival, u_id: uuid.UUID, replication: int) -> "FederatedArrivalTask":
         """
@@ -260,6 +280,7 @@ class FederatedArrivalTask(ArrivalTask):
         """
         task = FederatedArrivalTask(
                 id=u_id,
+                creation_time=time.time(),
                 network=arrival.get_network(),
                 dataset=arrival.get_dataset(),
                 loss_function=arrival.task.network_configuration.loss_function,

@@ -18,6 +18,7 @@ from fltk.datasets.dataset import Dataset
 from fltk.util.config.definitions.net import Nets
 from fltk.util.config.experiment_config import (HyperParameters, SystemParameters, LearningParameters, JobDescription,
                                                 ExperimentParser)
+from fltk.util.statistics.arrival_rate_estimator import ArrivalRateEstimator
 from fltk.util.task.train_task import TrainTask
 
 
@@ -142,8 +143,9 @@ class SimulatedArrivalGenerator(ArrivalGenerator):
     _tick_list: List[Arrival] = []
     _decrement = 10
 
-    def __init__(self, custom_config: Path = None):
+    def __init__(self, arrival_rate_estimator: ArrivalRateEstimator, custom_config: Path = None):
         super(SimulatedArrivalGenerator, self).__init__(custom_config or self.configuration_path)
+        self._arrival_rate_estimator = arrival_rate_estimator
         self.load_config()
 
     def set_logger(self, name: str = None):
@@ -214,6 +216,7 @@ class SimulatedArrivalGenerator(ArrivalGenerator):
                 entry.ticks -= self._decrement
                 if entry.ticks <= 0:
                     self.arrivals.put(entry)
+                    self._arrival_rate_estimator.new_arrival()
                     new_arrival = self.generate_arrival(entry.task_id)
                     new_scheduled.append(new_arrival)
                     msg = f"Arrival {new_arrival.task_id} arrives in {new_arrival.ticks} seconds"
@@ -243,8 +246,9 @@ class SequentialArrivalGenerator(ArrivalGenerator):
     the effect of hyperparameters on test/validation performance.
     """
 
-    def __init__(self, custom_config: Path):
+    def __init__(self, arrival_rate_estimator: ArrivalRateEstimator, custom_config: Path):
         super(SequentialArrivalGenerator, self).__init__(custom_config)
+        self._arrival_rate_estimator = arrival_rate_estimator
         self.load_config()
 
     def set_logger(self, name: str = None):
@@ -281,3 +285,4 @@ class SequentialArrivalGenerator(ArrivalGenerator):
                 arrival = Arrival(None, train_task, job_name)
                 self.logger.info(f"(Sequentially) generate experiment: {replication_name}")
                 self.arrivals.put(arrival)
+                self._arrival_rate_estimator.new_arrival()
