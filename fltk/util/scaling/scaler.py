@@ -70,9 +70,9 @@ class ClusterScaler:
         # If the ratio is smaller than the lower threshold => scale down 1 node
         if ratio < self._arrival_time_thresholds[0]:
             return - 1
-        # If the ratio is smaller than the lower threshold => scale up 1 node
+        # If the ratio is greater than the upper threshold => scale up 1 node
         elif ratio > self._arrival_time_thresholds[1]:
             return 1
-        # Keep the number of nodes => we want the utilization to be between 0.7 and 0.8
+        # If the utilization is between 0.7 and 0.8 => keep the current number of nodes
         else:
             return 0
