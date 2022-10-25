@@ -230,11 +230,17 @@ class Orchestrator(DistNode, abc.ABC):
                 job_status = self._client.get_job_status(name=f"trainjob-{task.id}",
                                                          namespace='test')
             except Exception as e:
-                logging.debug(msg=f"Could not retrieve job_status for {task.id}")
+                logging.error(msg=f"Could not retrieve job_status for {task.id}. Reason: {e}")
                 job_status = None
 
             if job_status and job_status in {'Completed', 'Failed', 'Succeeded'}:
-                completion_time_iso = self._client.get(name=f"trainjob-{task.id}", namespace='test')['status']['completionTime']
+                try:
+                    completion_time_iso = self._client.get(name=f"trainjob-{task.id}", namespace='test')['status']['completionTime']
+                except Exception as e:
+                    logging.error(msg=f"Could not retrieve completion time for {task.id}. Reason: {e}")
+                    continue
+
+                # TO SERVICE TIME
                 task_duration = dateutil.parser.isoparse(completion_time_iso).timestamp() - task.creation_time
                 logging.info(f"{task.id} was completed with status: {job_status} after {task_duration} seconds, moving to completed")
                 _completed_tasks.add(task)
