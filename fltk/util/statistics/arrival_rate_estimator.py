@@ -45,9 +45,9 @@ class ArrivalRateEstimator(Estimator):
             self.inter_arrival_sum += inter_arrival_time.total_seconds()
         self.previous_arrival_timestamp = new_timestamp
 
-    def new_job_finish(self, job_execution_time):
+    def new_job_finish(self, job_service_time):
         self.completed_jobs_counter += 1
-        self.service_time_sum += job_execution_time
+        self.service_time_sum += job_service_time
 
     def estimate_arrival_rate(self) -> Optional[float]:
         if self.inter_arrival_counter != 0:
