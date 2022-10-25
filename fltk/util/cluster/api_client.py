@@ -1,4 +1,6 @@
 import abc
+import logging
+import time
 
 from google.cloud import container_v1
 
@@ -17,9 +19,12 @@ class ClusterApiClient:
 
 
 class GKEClusterApiClient(ClusterApiClient):
+    SCALING_TIMEOUT = 120
+    SCALING_SLEEP = 10
 
     def __init__(self, conf: ScalingConfig):
         super().__init__()
+        self._logger = logging.getLogger('GKEClusterApiClient')
         self._container_client = container_v1.ClusterManagerClient()
         self._node_pool_name = conf.node_pool_name
         pass
@@ -32,9 +37,18 @@ class GKEClusterApiClient(ClusterApiClient):
 
         return response.initial_node_count
 
-    def set_node_pool_size(self, node_count):
+    def set_node_pool_size(self, requested_node_count):
         request = container_v1.SetNodePoolSizeRequest()
         request.name = self._node_pool_name
-        request.node_count = node_count
+        request.node_count = requested_node_count
 
+        self._logger.info(f"Requesting cluster scaling to {requested_node_count} nodes")
         self._container_client.set_node_pool_size(request=request)
+
+        start_time = time.time()
+        while time.time() - start_time < self.SCALING_TIMEOUT:
+            time.sleep(self.SCALING_SLEEP)
+            node_count = self.get_node_pool_size()
+            if node_count == requested_node_count:
+                break
+            self._logger.info(f"Waiting for cluster scaling to finish ({node_count}/{requested_node_count} nodes)...")

@@ -60,9 +60,8 @@ class ClusterScaler:
             else:
                 self._last_scaling_time = now
                 self._logger.info(f"Scaling cluster from {current_node_count} to {required_node_count} nodes")
-                # TODO: Is it blocking?
                 self._cluster_api_client.set_node_pool_size(required_node_count)
-                self._logger.info("Resetting arrival estimator")
+                self._logger.info(f"Scaling finished. Resetting arrival estimator")
                 self._arrival_rate_estimator.reset()
 
         except Exception as e:
