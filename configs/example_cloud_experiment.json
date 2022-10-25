@@ -16,7 +16,8 @@
       "scale_up_ratio": 0.8,
       "scale_down_ratio": 0.7,
       "scaling_grace_period": 180,
-      "max_cluster_size": 5
+      "min_node_pool_size": 3,
+      "max_node_pool_size": 10
    },
    "execution_config": {
       "duration": 600,

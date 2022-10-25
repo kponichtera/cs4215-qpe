@@ -153,6 +153,7 @@ class ScalingConfig:
     scale_up_ratio: float = 0.8
     scale_down_ratio: float = 0.7
     scaling_grace_period: int = 0
+    min_node_pool_size: int = 3
     max_node_pool_size: int = 5
 
 @dataclass_json

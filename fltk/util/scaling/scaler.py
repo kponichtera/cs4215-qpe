@@ -19,6 +19,7 @@ class ClusterScaler:
         self._scale_up_ratio = conf.scale_up_ratio
         self._scale_down_ratio = conf.scale_down_ratio
         self._scaling_grace_period = conf.scaling_grace_period
+        self._min_node_pool_size = conf.min_node_pool_size
         self._max_node_pool_size = conf.max_node_pool_size
         self._arrival_rate_estimator = estimator
         self._cluster_api_client = cluster_api_client
@@ -73,17 +74,20 @@ class ClusterScaler:
 
         if arrival_rate is None or service_rate is None:
             self._logger.info("Not enough statistics collected to perform scaling")
-            return current_node_count
+            return self._limit_cluster_size(current_node_count)
 
         ratio = arrival_rate / service_rate
         self._logger.info(f"Current arrival rate and service rate ratio: {ratio}")
 
         # If the ratio is smaller than the lower threshold => scale down 1 node
         if ratio < self._scale_down_ratio:
-            return max(current_node_count - 1, 1)
+            return self._limit_cluster_size(current_node_count - 1)
         # If the ratio is greater than the upper threshold => scale up 1 node
         elif ratio >= self._scale_up_ratio:
-            return min(current_node_count + 1, self._max_node_pool_size)
+            return self._limit_cluster_size(current_node_count + 1)
         # If the utilization is between the thresholds => keep the current number of nodes
         else:
-            return current_node_count
+            return self._limit_cluster_size(current_node_count)
+
+    def _limit_cluster_size(self, size) -> int:
+        return min(max(size, self._min_node_pool_size), self._max_node_pool_size)
