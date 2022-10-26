@@ -15,7 +15,7 @@
       "node_pool_name": "projects/test-bed-fltk-kponichtera/locations/us-central1-c/clusters/fltk-testbed-cluster/nodePools/medium-fltk-pool-1",
       "scale_up_ratio": 0.8,
       "scale_down_ratio": 0.7,
-      "scaling_grace_period": 180,
+      "scaling_grace_period": 60,
       "min_node_pool_size": 2,
       "max_node_pool_size": 10
    },

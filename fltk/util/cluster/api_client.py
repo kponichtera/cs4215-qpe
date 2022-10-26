@@ -52,3 +52,4 @@ class GKEClusterApiClient(ClusterApiClient):
             if node_count == requested_node_count:
                 break
             self._logger.info(f"Waiting for cluster scaling to finish ({node_count}/{requested_node_count} nodes)...")
+        self._logger.info(f"Scaling to {requested_node_count} complete")
