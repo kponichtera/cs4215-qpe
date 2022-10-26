@@ -172,6 +172,7 @@ class Orchestrator(DistNode, abc.ABC):
 
         self._cluster_scaler.stop()
         self._cluster_mgr.stop()
+        self._data_collector.stop()
 
     @abc.abstractmethod
     def run(self, clear: bool = False, experiment_replication: int = -1) -> None:
@@ -345,17 +346,6 @@ class SimulatedOrchestrator(Orchestrator):
                 self.deployed_tasks.add(curr_task)
 
                 self.wait_for_job_to_start(job_to_start.metadata.name, namespace=self._config.cluster_config.namespace)
-
-            self._logger.info("Logging state to the file...")
-            current_node_count = self._cluster_scaler.determine_current_node_count()
-            self._data_collector.log(
-                num_nodes=current_node_count,
-                estimated_nodes_num=self._cluster_scaler.determine_requested_node_count(current_node_count),
-                current_utilisation=self._arrival_rate_estimator.estimate_utilization(),
-                total_utilisation=self._arrival_rate_estimator.estimate_total_utilization(),
-                total_average_response_time=self._arrival_rate_estimator.estimate_response_time(),
-                pending_tasks_count=self.pending_tasks.qsize()
-            )
 
             # Prevent high cpu utilization by sleeping between checks.
             time.sleep(self.SLEEP_TIME)

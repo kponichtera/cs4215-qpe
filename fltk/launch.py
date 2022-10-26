@@ -110,16 +110,16 @@ def exec_orchestrator(args: Namespace = None, conf: DistributedConfig = None, re
         conf.cluster_config.load_incluster_image()
 
     # TODO: Move ClusterManager one level up, to allow for re-use
-    data_collector = DataCollector()
     cluster_manager = ClusterManager()
     cluster_api_client = GKEClusterApiClient(conf.scaling_config)
     arrival_rate_estimator = ArrivalRateEstimator()
     cluster_scaler = ClusterScaler(conf.scaling_config, arrival_rate_estimator, cluster_api_client)
+    data_collector = DataCollector(cluster_scaler, arrival_rate_estimator)
     arrival_generator = get_arrival_generator(conf, arrival_rate_estimator, args.experiment)
     orchestrator = get_orchestrator(conf, data_collector, cluster_manager, cluster_scaler, arrival_generator,
                                     arrival_rate_estimator)
 
-    pool = ThreadPool(4)
+    pool = ThreadPool(5)
 
     logging.info("Starting cluster manager")
     pool.apply(cluster_manager.start)
@@ -131,14 +131,15 @@ def exec_orchestrator(args: Namespace = None, conf: DistributedConfig = None, re
     logging.info("Starting cluster scaler")
     pool.apply(cluster_scaler.start)
 
+    logging.info("Starting data collector")
+    pool.apply(data_collector.start)
+
     logging.info("Starting orchestrator")
     pool.apply(orchestrator.run, kwds={"experiment_replication": replication})
 
     pool.close()
 
     logging.info(f"Stopped execution of Orchestrator replication: {replication}.")
-
-    data_collector.end_logging_session()
 
 
 def launch_extractor(arg_path: Path, conf_path: Path, rank: Rank, nic: Optional[NIC] = None,
