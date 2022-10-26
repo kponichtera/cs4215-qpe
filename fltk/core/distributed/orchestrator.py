@@ -344,7 +344,16 @@ class SimulatedOrchestrator(Orchestrator):
 
                 self.wait_for_job_to_start(job_to_start.metadata.name, namespace=self._config.cluster_config.namespace)
 
-            self._logger.info("Still alive...")
+            self._logger.info("Logging state to the file...")
+            current_node_count = self._cluster_scaler.determine_current_node_count()
+            self._data_collector.log(
+                num_nodes=current_node_count,
+                estimated_nodes_num=self._cluster_scaler.determine_requested_node_count(current_node_count),
+                current_utilisation=self._arrival_rate_estimator.estimate_utilization(),
+                total_utilisation=self._arrival_rate_estimator.estimate_total_utilization(),
+                pending_tasks_count=self.pending_tasks.qsize()
+            )
+
             # Prevent high cpu utilization by sleeping between checks.
             time.sleep(self.SLEEP_TIME)
         self.stop()
