@@ -14,7 +14,7 @@ class DataCollector:
         self.output_file = open(file_name, 'w')
         self.output_file.write('timestamp,num_nodes,current_utilisation,total_utilisation,estimated_nodes_num\n')
 
-    def log_something(self, num_nodes, current_utilisation, total_utilisation, estimated_nodes_num):
+    def log(self, num_nodes, current_utilisation, total_utilisation, estimated_nodes_num):
         now = datetime.now().strftime("%H:%m:%S")
         line = f'{now},{num_nodes},{current_utilisation},{total_utilisation},{estimated_nodes_num}\n'
         self.write_line(line)
