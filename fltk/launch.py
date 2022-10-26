@@ -18,12 +18,13 @@ from fltk.nets.util.reproducability import init_reproducibility, init_learning_r
 from fltk.util.cluster.client import ClusterManager
 
 from fltk.util.cluster.worker import should_distribute
-from fltk.util.config import DistributedConfig, FedLearnerConfig, retrieve_config_network_params, get_learning_param_config, \
-    DistLearnerConfig
+from fltk.util.config import DistributedConfig, FedLearnerConfig, retrieve_config_network_params, \
+    get_learning_param_config, DistLearnerConfig
 
 from fltk.util.environment import retrieve_or_init_env, retrieve_env_config
 from fltk.util.scaling.scaler import ClusterScaler
 from fltk.util.statistics.arrival_rate_estimator import ArrivalRateEstimator
+from fltk.util.statistics.data_collector import DataCollector
 
 # Define types for clarity in execution
 
@@ -109,12 +110,14 @@ def exec_orchestrator(args: Namespace = None, conf: DistributedConfig = None, re
         conf.cluster_config.load_incluster_image()
 
     # TODO: Move ClusterManager one level up, to allow for re-use
+    data_collector = DataCollector()
     cluster_manager = ClusterManager()
     cluster_api_client = GKEClusterApiClient(conf.scaling_config)
     arrival_rate_estimator = ArrivalRateEstimator()
     cluster_scaler = ClusterScaler(conf.scaling_config, arrival_rate_estimator, cluster_api_client)
     arrival_generator = get_arrival_generator(conf, arrival_rate_estimator, args.experiment)
-    orchestrator = get_orchestrator(conf, cluster_manager, cluster_scaler, arrival_generator, arrival_rate_estimator)
+    orchestrator = get_orchestrator(conf, data_collector, cluster_manager, cluster_scaler, arrival_generator,
+                                    arrival_rate_estimator)
 
     pool = ThreadPool(4)
 
@@ -283,18 +286,18 @@ def launch_remote(arg_path: Path, conf_path: Path, rank: Rank, nic: Optional[NIC
     logging.log(logging.INFO, msg)
     # fixme: Move to async implementation to prevent CPP memory leak
     options = rpc.TensorPipeRpcBackendOptions(
-            num_worker_threads=16 if rank == 0 else 4,
-            rpc_timeout=0,  # infinite timeout
-            init_method='env://',
-            _transports=["uv"]  # Use LibUV backend for async/IO interaction
+        num_worker_threads=16 if rank == 0 else 4,
+        rpc_timeout=0,  # infinite timeout
+        init_method='env://',
+        _transports=["uv"]  # Use LibUV backend for async/IO interaction
     )
     if rank != 0:
         print(f'Starting worker-{rank} with world size={r_conf.world_size}')
         rpc.init_rpc(
-                f"client{rank}",
-                rank=rank,
-                world_size=r_conf.world_size,
-                rpc_backend_options=options,
+            f"client{rank}",
+            rank=rank,
+            world_size=r_conf.world_size,
+            rpc_backend_options=options,
         )
         client_node = Client(f'client{rank}', rank, r_conf.world_size, r_conf)
         client_node.remote_registration()
@@ -302,10 +305,10 @@ def launch_remote(arg_path: Path, conf_path: Path, rank: Rank, nic: Optional[NIC
     else:
         print(f'Starting the PS (Fed) with world size={r_conf.world_size}')
         rpc.init_rpc(
-                "federator",
-                rank=rank,
-                world_size=r_conf.world_size,
-                rpc_backend_options=options
+            "federator",
+            rank=rank,
+            world_size=r_conf.world_size,
+            rpc_backend_options=options
         )
 
         federator_node = Federator('federator', 0, r_conf.world_size, r_conf)
@@ -348,7 +351,6 @@ def launch_cluster(arg_path: Path, conf_path: Path, rank: Rank, nic: Optional[NI
     logging.info(f"Starting in cluster mode{' (locally)' if args.local else ''}.")
     logging.basicConfig(level=logging.DEBUG,
                         datefmt='%m-%d %H:%M')
-
 
     # Set the seed for arrivals, torch seed is mostly ignored. Set the `arrival_seed` to a different value
     # for each repetition that you want to run an experiment with.

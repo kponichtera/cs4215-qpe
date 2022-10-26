@@ -21,13 +21,13 @@ from fltk.core.distributed.dist_node import DistNode
 from fltk.util.cluster.client import construct_job, ClusterManager
 from fltk.util.scaling.scaler import ClusterScaler
 from fltk.util.statistics.arrival_rate_estimator import ArrivalRateEstimator
+from fltk.util.statistics.data_collector import DataCollector
 from fltk.util.task import get_job_arrival_class, DistributedArrivalTask, FederatedArrivalTask, ArrivalTask
 from fltk.util.task.arrival_task import HistoricalArrivalTask, _ArrivalTask
 from fltk.util.task.generator import ArrivalGenerator
 
 if TYPE_CHECKING:
     from fltk.util.config import DistributedConfig
-
 
 # Setup required variables for Jinja templates.
 EXPERIMENT_DIR = 'experiments'
@@ -145,10 +145,11 @@ class Orchestrator(DistNode, abc.ABC):
     completed_tasks: Set[_ArrivalTask] = set()
     SLEEP_TIME = 5
 
-    def __init__(self, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler, arv_gen: ArrivalGenerator,
-                 arrival_rate_estimator: ArrivalRateEstimator, config: DistributedConfig):
+    def __init__(self, data_collector: DataCollector, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler,
+                 arv_gen: ArrivalGenerator, arrival_rate_estimator: ArrivalRateEstimator, config: DistributedConfig):
         self._logger = logging.getLogger('Orchestrator')
         self._logger.debug("Loading in-cluster configuration")
+        self._data_collector = data_collector
         self._cluster_mgr = cluster_mgr
         self._cluster_scaler = cluster_scaler
         self._arrival_generator = arv_gen
@@ -202,11 +203,11 @@ class Orchestrator(DistNode, abc.ABC):
             self._logger.info(f'Deleting: {job_name}')
             try:
                 self._client.custom_api.delete_namespaced_custom_object(
-                        PYTORCHJOB_GROUP,
-                        PYTORCHJOB_VERSION,
-                        namespace,
-                        PYTORCHJOB_PLURAL,
-                        job_name)
+                    PYTORCHJOB_GROUP,
+                    PYTORCHJOB_VERSION,
+                    namespace,
+                    PYTORCHJOB_PLURAL,
+                    job_name)
             except Exception as excp:
                 self._logger.warning(f'Could not delete: {job_name}. Reason: {excp}')
 
@@ -250,7 +251,8 @@ class Orchestrator(DistNode, abc.ABC):
                     continue
 
                 service_time = completion_time.timestamp() - start_time.timestamp()
-                logging.info(f"{task.id} was completed with status: {job_status} with {service_time} seconds service time, moving to completed")
+                logging.info(
+                    f"{task.id} was completed with status: {job_status} with {service_time} seconds service time, moving to completed")
                 _completed_tasks.add(task)
                 _completed_service_times.append(service_time)
             else:
@@ -286,9 +288,10 @@ class SimulatedOrchestrator(Orchestrator):
     are supported.
     """
 
-    def __init__(self, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler, arrival_generator: ArrivalGenerator,
-                 arrival_rate_estimator: ArrivalRateEstimator, config: DistributedConfig):
-        super().__init__(cluster_mgr, cluster_scaler, arrival_generator, arrival_rate_estimator, config)
+    def __init__(self, data_collector: DataCollector, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler,
+                 arrival_generator: ArrivalGenerator, arrival_rate_estimator: ArrivalRateEstimator,
+                 config: DistributedConfig):
+        super().__init__(data_collector, cluster_mgr, cluster_scaler, arrival_generator, arrival_rate_estimator, config)
 
     def run(self, clear: bool = False, experiment_replication: int = -1) -> None:
         self._alive = True
@@ -340,8 +343,9 @@ class BatchOrchestrator(Orchestrator):
     Orchestrator implementation to allow for running all experiments that were defined in one go.
     """
 
-    def __init__(self, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler, arrival_generator: ArrivalGenerator,
-                 arrival_rate_estimator: ArrivalRateEstimator, config: DistributedConfig):
+    def __init__(self, data_collector: DataCollector, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler,
+                 arrival_generator: ArrivalGenerator, arrival_rate_estimator: ArrivalRateEstimator,
+                 config: DistributedConfig):
         super().__init__(cluster_mgr, cluster_scaler, arrival_generator, arrival_rate_estimator, config)
 
     def run(self, clear: bool = False,
