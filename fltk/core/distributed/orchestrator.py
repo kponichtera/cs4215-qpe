@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from jinja2 import Environment, FileSystemLoader
 from kubeflow.training import PyTorchJobClient
+from kubeflow.training import KubeflowOrgV1PyTorchJob
 from kubeflow.training.constants.constants import PYTORCHJOB_GROUP, PYTORCHJOB_VERSION, PYTORCHJOB_PLURAL
 from kubernetes import client
 from kubernetes.client import V1ConfigMap, V1ObjectMeta
@@ -279,6 +280,20 @@ class Orchestrator(DistNode, abc.ABC):
             self.collect_completed_jobs()
             time.sleep(self.SLEEP_TIME)
 
+    def wait_for_job_to_start(self, job_name: str, namespace: str):
+        self._client.wait_for_condition(
+            job_name,
+            expected_condition=["Running", "Succeeded"],
+            namespace=namespace,
+            timeout_seconds=1000000,
+            polling_interval=self.SLEEP_TIME,
+            status_callback=self._job_wait_status_callback,
+        )
+        logging.info(f"Job {job_name} started")
+
+    def _job_wait_status_callback(self, job):
+        logging.info(f"Waiting for job {job['metadata']['name']} to start..."),
+
 
 class SimulatedOrchestrator(Orchestrator):
     """
@@ -324,8 +339,7 @@ class SimulatedOrchestrator(Orchestrator):
                 self._client.create(job_to_start, namespace=self._config.cluster_config.namespace)
                 self.deployed_tasks.add(curr_task)
 
-                # TODO: Extend this logic in your real project, this is only meant for demo purposes
-                # For now we exit the thread after scheduling a single task.
+                self.wait_for_job_to_start(job_to_start.metadata.name, namespace=self._config.cluster_config.namespace)
 
             self._logger.info("Still alive...")
             # Prevent high cpu utilization by sleeping between checks.
