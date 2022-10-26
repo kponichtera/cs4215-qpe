@@ -16,13 +16,17 @@ class ClusterScaler:
         self._logger = logging.getLogger('ClusterScaler')
 
         self._dry_run = conf.dry_run
-        self._arrival_time_thresholds = conf.arrival_rate_thresholds
-        self._scale_down_grace_period = conf.scale_down_grace_period
+        self._scale_up_ratio = conf.scale_up_ratio
+        self._scale_down_ratio = conf.scale_down_ratio
+        self._scaling_grace_period = conf.scaling_grace_period
+        self._min_node_pool_size = conf.min_node_pool_size
+        self._max_node_pool_size = conf.max_node_pool_size
         self._arrival_rate_estimator = estimator
         self._cluster_api_client = cluster_api_client
 
         self._last_scaling_time = 0
         self._last_scale_down_time = 0
+        self._last_scale_up_time = 0
 
     def start(self):
         self._logger.info("Starting cluster scaler...")
@@ -43,39 +47,46 @@ class ClusterScaler:
     def scale(self):
         try:
             current_node_count = self._cluster_api_client.get_node_pool_size()
-            required_node_count = self._determine_requested_node_count()
+            required_node_count = self._determine_requested_node_count(current_node_count)
 
             now = time.time()
-            scale_down = required_node_count < current_node_count
 
             if current_node_count == required_node_count:
                 self._logger.info(f"No cluster scaling is necessary")
-            elif scale_down and now - self._last_scaling_time < self._scale_down_grace_period:
-                self._logger.info(f"Waiting grace period before scaling down from {current_node_count} to {required_node_count} nodes...")
+            elif now - self._last_scaling_time < self._scaling_grace_period:
+                self._logger.info(f"Waiting grace period before scaling from {current_node_count} to {required_node_count} nodes...")
             elif self._dry_run:
                 self._logger.info(f"DRY RUN - would scale cluster from {current_node_count} to {required_node_count} nodes")
             else:
-                if scale_down:
-                    self._last_scaling_time = now
+                self._last_scaling_time = now
                 self._logger.info(f"Scaling cluster from {current_node_count} to {required_node_count} nodes")
                 self._cluster_api_client.set_node_pool_size(required_node_count)
+                self._logger.info(f"Scaling finished. Resetting arrival estimator")
+                self._arrival_rate_estimator.reset()
 
         except Exception as e:
             self._logger.error(f"Error when scaling the cluster. Reason: {e}")
 
-    def _determine_requested_node_count(self) -> int:
+    def _determine_requested_node_count(self, current_node_count) -> int:
         arrival_rate = self._arrival_rate_estimator.estimate_arrival_rate()
-        self._logger.debug(f"Current arrival rate: {arrival_rate}")
+        service_rate = self._arrival_rate_estimator.estimate_service_rate()
 
-        # If arrival rate is smaller than the first threshold, keep only one node
-        if arrival_rate < self._arrival_time_thresholds[0]:
-            return 1
+        if arrival_rate is None or service_rate is None:
+            self._logger.info("Not enough statistics collected to perform scaling")
+            return self._limit_cluster_size(current_node_count)
 
-        # If arrival rate is between ith and i+1st threshold, return the amount of nodes that should be there
-        for i in range(len(self._arrival_time_thresholds) - 1):
-            if self._arrival_time_thresholds[i] < arrival_rate < self._arrival_time_thresholds[i+1]:
-                return i + 2
+        ratio = arrival_rate / service_rate
+        self._logger.info(f"Current arrival rate and service rate ratio: {ratio}")
 
-        # If arrival rate is larger than the biggest threshold, return the maximum size of cluster
-        if arrival_rate > self._arrival_time_thresholds[-1]:
-            return len(self._arrival_time_thresholds) + 1
+        # If the ratio is smaller than the lower threshold => scale down 1 node
+        if ratio < self._scale_down_ratio:
+            return self._limit_cluster_size(current_node_count - 1)
+        # If the ratio is greater than the upper threshold => scale up 1 node
+        elif ratio >= self._scale_up_ratio:
+            return self._limit_cluster_size(current_node_count + 1)
+        # If the utilization is between the thresholds => keep the current number of nodes
+        else:
+            return self._limit_cluster_size(current_node_count)
+
+    def _limit_cluster_size(self, size) -> int:
+        return min(max(size, self._min_node_pool_size), self._max_node_pool_size)

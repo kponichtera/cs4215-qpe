@@ -222,7 +222,7 @@ class Orchestrator(DistNode, abc.ABC):
     def collect_completed_jobs(self):
         # Set of tuples
         _completed_tasks = set()
-        _completed_durations = list()
+        _completed_service_times = list()
 
         logging.info(f"Collecting completed jobs...")
         for task in self.deployed_tasks:
@@ -230,21 +230,35 @@ class Orchestrator(DistNode, abc.ABC):
                 job_status = self._client.get_job_status(name=f"trainjob-{task.id}",
                                                          namespace='test')
             except Exception as e:
-                logging.debug(msg=f"Could not retrieve job_status for {task.id}")
+                logging.error(msg=f"Could not retrieve job_status for {task.id}. Reason: {e}")
                 job_status = None
 
-            if job_status and job_status in {'Completed', 'Failed', 'Succeeded'}:
-                completion_time_iso = self._client.get(name=f"trainjob-{task.id}", namespace='test')['status']['completionTime']
-                task_duration = dateutil.parser.isoparse(completion_time_iso).timestamp() - task.creation_time
-                logging.info(f"{task.id} was completed with status: {job_status} after {task_duration} seconds, moving to completed")
+            if job_status == 'Failed':
+                logging.error(f"Job {task.id} failed to execute")
                 _completed_tasks.add(task)
-                _completed_durations.append(task_duration)
+            if job_status and job_status in {'Completed', 'Succeeded'}:
+                try:
+                    conditions = self._client.get(name=f"trainjob-{task.id}", namespace='test')['status']['conditions']
+
+                    start_time = [c['lastTransitionTime'] for c in conditions if c['type'] == 'Running'][0]
+                    completion_time = [c['lastTransitionTime'] for c in conditions if c['type'] == 'Succeeded'][0]
+
+                    start_time = dateutil.parser.isoparse(start_time)
+                    completion_time = dateutil.parser.isoparse(completion_time)
+                except Exception as e:
+                    logging.error(msg=f"Could not retrieve completion time for {task.id}. Reason: {e}")
+                    continue
+
+                service_time = completion_time.timestamp() - start_time.timestamp()
+                logging.info(f"{task.id} was completed with status: {job_status} with {service_time} seconds service time, moving to completed")
+                _completed_tasks.add(task)
+                _completed_service_times.append(service_time)
             else:
                 logging.info(
                     f"Waiting for {task.id} to complete, {self.pending_tasks.qsize()} pending, {self._arrival_generator.arrivals.qsize()} arrivals, {len(self.completed_tasks)} completed")
 
-        for duration in _completed_durations:
-            self._arrival_rate_estimator.new_job_finish(duration)
+        for service_time in _completed_service_times:
+            self._arrival_rate_estimator.new_job_finish(service_time)
 
         self.completed_tasks.update(_completed_tasks)
         self.deployed_tasks.difference_update(_completed_tasks)

@@ -23,7 +23,7 @@
             "dataset": "mnist"
           },
           "systemParameters": {
-            "dataParallelism": 3,
+            "dataParallelism": 2,
             "configurations": {
               "default": {
                 "cores": "4000m",
