@@ -26,9 +26,9 @@ class DataCollector:
         self._output_file = open(file_name, 'w')
         self._output_file.write(self._header + '\n')
 
-    def log(self, num_nodes, current_utilisation, total_utilisation, estimated_nodes_num):
+    def log(self, num_nodes, current_utilisation, total_utilisation, estimated_nodes_num, pending_tasks_count):
         timestamp = self._starting_time - datetime.now().timestamp()
-        line = f'{timestamp},{num_nodes},{current_utilisation},{total_utilisation},{estimated_nodes_num}\n'
+        line = f'{timestamp},{num_nodes},{current_utilisation},{total_utilisation},{estimated_nodes_num},{pending_tasks_count}\n'
         self.write_line(line)
 
     def write_line(self, line):
