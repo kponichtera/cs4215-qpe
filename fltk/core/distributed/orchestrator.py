@@ -346,7 +346,7 @@ class BatchOrchestrator(Orchestrator):
     def __init__(self, data_collector: DataCollector, cluster_mgr: ClusterManager, cluster_scaler: ClusterScaler,
                  arrival_generator: ArrivalGenerator, arrival_rate_estimator: ArrivalRateEstimator,
                  config: DistributedConfig):
-        super().__init__(cluster_mgr, cluster_scaler, arrival_generator, arrival_rate_estimator, config)
+        super().__init__(data_collector, cluster_mgr, cluster_scaler, arrival_generator, arrival_rate_estimator, config)
 
     def run(self, clear: bool = False,
             experiment_replication: int = 1,
@@ -369,7 +369,6 @@ class BatchOrchestrator(Orchestrator):
                 jobs = [job['metadata']['name'] for job in curr_jobs['items']]
                 self.wait_for_jobs_to_complete(others=jobs)
             start_time = time.time()
-
             if clear:
                 self._clear_jobs()
         except Exception as e:
