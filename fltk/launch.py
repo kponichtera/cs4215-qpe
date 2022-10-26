@@ -138,6 +138,8 @@ def exec_orchestrator(args: Namespace = None, conf: DistributedConfig = None, re
 
     logging.info(f"Stopped execution of Orchestrator replication: {replication}.")
 
+    data_collector.end_logging_session()
+
 
 def launch_extractor(arg_path: Path, conf_path: Path, rank: Rank, nic: Optional[NIC] = None,
                      host: Optional[Host] = None,

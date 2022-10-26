@@ -10,6 +10,7 @@ class DataCollector:
                      'estimated_nodes_num',
                      'current_utilisation',
                      'total_utilisation',
+                     'total_average_response_time',
                      'pending_tasks_count']
 
     def __init__(self):
@@ -21,12 +22,12 @@ class DataCollector:
 
     def initialize_file(self):
         self._logger.info("Spinning up data collection mechanism...")
-        now = datetime.now().isoformat()
-        file_name = f'{now}.csv'
+        now = int(time.time())
+        file_name = f'orchestrator_results_{now}.csv'
         self._output_file = open(file_name, 'w')
         self._output_file.write(self._header + '\n')
 
-    def log(self, num_nodes, current_utilisation, total_utilisation, estimated_nodes_num, pending_tasks_count):
+    def log(self, num_nodes, estimated_nodes_num, current_utilisation, total_utilisation, total_average_response_time, pending_tasks_count):
         if self._start_time is None:
             self._start_time = time.time()
             now = self._start_time
@@ -35,7 +36,7 @@ class DataCollector:
 
         time_since_start = now - self._start_time
 
-        line = f'{time_since_start},{num_nodes},{estimated_nodes_num},{current_utilisation},{total_utilisation},{pending_tasks_count}\n'
+        line = f'{time_since_start},{num_nodes},{estimated_nodes_num},{current_utilisation},{total_utilisation},{total_average_response_time},{pending_tasks_count}\n'
         self.write_line(line)
 
     def write_line(self, line):
@@ -44,4 +45,5 @@ class DataCollector:
         os.fsync(self._output_file.fileno())
 
     def end_logging_session(self):
+        self._logger.info("Closing the data output file...")
         self._output_file.close()

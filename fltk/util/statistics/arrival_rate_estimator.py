@@ -18,6 +18,10 @@ class Estimator:
         raise NotImplementedError()
 
     @abc.abstractmethod
+    def estimate_response_time(self) -> Optional[float]:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
     def reset(self):
         raise NotImplementedError()
 
@@ -42,6 +46,7 @@ class ArrivalRateEstimator(Estimator):
         self.total_completed_jobs_counter = 0
         self.total_service_time_sum = 0
         self.total_inter_arrival_sum = 0
+        self.total_response_time_sum = 0
         self.reset()
 
     def reset(self):
@@ -61,11 +66,12 @@ class ArrivalRateEstimator(Estimator):
             self.total_inter_arrival_sum += inter_arrival_time.total_seconds()
         self.previous_arrival_timestamp = new_timestamp
 
-    def new_job_finish(self, job_service_time):
+    def new_job_finish(self, job_service_time, job_response_time):
         self.completed_jobs_counter += 1
         self.total_completed_jobs_counter += 1
         self.service_time_sum += job_service_time
         self.total_service_time_sum += job_service_time
+        self.total_response_time_sum += job_response_time
 
     def estimate_utilization(self) -> Optional[float]:
         service_rate = self.estimate_service_rate()
@@ -82,6 +88,11 @@ class ArrivalRateEstimator(Estimator):
             return None
 
         return arrival_rate / service_rate
+
+    def estimate_response_time(self) -> Optional[float]:
+        if self.total_completed_jobs_counter == 0:
+            return None
+        return self.total_response_time_sum / self.total_completed_jobs_counter
 
     def estimate_service_rate(self) -> Optional[float]:
         return self._estimate_service_rate(self.completed_jobs_counter, self.service_time_sum)
