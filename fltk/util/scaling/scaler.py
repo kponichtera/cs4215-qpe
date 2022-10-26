@@ -46,8 +46,8 @@ class ClusterScaler:
 
     def scale(self):
         try:
-            current_node_count = self._cluster_api_client.get_node_pool_size()
-            required_node_count = self._determine_requested_node_count(current_node_count)
+            current_node_count = self.determine_current_node_count()
+            required_node_count = self.determine_requested_node_count(current_node_count)
 
             now = time.time()
 
@@ -67,22 +67,23 @@ class ClusterScaler:
         except Exception as e:
             self._logger.error(f"Error when scaling the cluster. Reason: {e}")
 
-    def _determine_requested_node_count(self, current_node_count) -> int:
-        arrival_rate = self._arrival_rate_estimator.estimate_arrival_rate()
-        service_rate = self._arrival_rate_estimator.estimate_service_rate()
+    def determine_current_node_count(self) -> int:
+        return self._cluster_api_client.get_node_pool_size()
 
-        if arrival_rate is None or service_rate is None:
+    def determine_requested_node_count(self, current_node_count) -> int:
+        utilization = self._arrival_rate_estimator.estimate_utilization()
+
+        if utilization is None:
             self._logger.info("Not enough statistics collected to perform scaling")
             return self._limit_cluster_size(current_node_count)
 
-        ratio = arrival_rate / service_rate
-        self._logger.info(f"Current arrival rate and service rate ratio: {ratio}")
+        self._logger.info(f"Current utilization: {utilization}")
 
         # If the ratio is smaller than the lower threshold => scale down 1 node
-        if ratio < self._scale_down_ratio:
+        if utilization < self._scale_down_ratio:
             return self._limit_cluster_size(current_node_count - 1)
         # If the ratio is greater than the upper threshold => scale up 1 node
-        elif ratio >= self._scale_up_ratio:
+        elif utilization >= self._scale_up_ratio:
             return self._limit_cluster_size(current_node_count + 1)
         # If the utilization is between the thresholds => keep the current number of nodes
         else:

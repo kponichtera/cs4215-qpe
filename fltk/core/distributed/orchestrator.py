@@ -224,7 +224,7 @@ class Orchestrator(DistNode, abc.ABC):
     def collect_completed_jobs(self):
         # Set of tuples
         _completed_tasks = set()
-        _completed_service_times = list()
+        _completed_times = list()
 
         logging.info(f"Collecting completed jobs...")
         for task in self.deployed_tasks:
@@ -242,6 +242,7 @@ class Orchestrator(DistNode, abc.ABC):
                 try:
                     conditions = self._client.get(name=f"trainjob-{task.id}", namespace='test')['status']['conditions']
 
+                    creation_timestamp = task.creation_time
                     start_time = [c['lastTransitionTime'] for c in conditions if c['type'] == 'Running'][0]
                     completion_time = [c['lastTransitionTime'] for c in conditions if c['type'] == 'Succeeded'][0]
 
@@ -252,16 +253,17 @@ class Orchestrator(DistNode, abc.ABC):
                     continue
 
                 service_time = completion_time.timestamp() - start_time.timestamp()
+                response_time = completion_time.timestamp() - creation_timestamp
                 logging.info(
                     f"{task.id} was completed with status: {job_status} with {service_time} seconds service time, moving to completed")
                 _completed_tasks.add(task)
-                _completed_service_times.append(service_time)
+                _completed_times.append((service_time, response_time))
             else:
                 logging.info(
                     f"Waiting for {task.id} to complete, {self.pending_tasks.qsize()} pending, {self._arrival_generator.arrivals.qsize()} arrivals, {len(self.completed_tasks)} completed")
 
-        for service_time in _completed_service_times:
-            self._arrival_rate_estimator.new_job_finish(service_time)
+        for (service_time, response_time) in _completed_times:
+            self._arrival_rate_estimator.new_job_finish(service_time, response_time)
 
         self.completed_tasks.update(_completed_tasks)
         self.deployed_tasks.difference_update(_completed_tasks)
@@ -344,7 +346,17 @@ class SimulatedOrchestrator(Orchestrator):
 
                 self.wait_for_job_to_start(job_to_start.metadata.name, namespace=self._config.cluster_config.namespace)
 
-            self._logger.info("Still alive...")
+            self._logger.info("Logging state to the file...")
+            current_node_count = self._cluster_scaler.determine_current_node_count()
+            self._data_collector.log(
+                num_nodes=current_node_count,
+                estimated_nodes_num=self._cluster_scaler.determine_requested_node_count(current_node_count),
+                current_utilisation=self._arrival_rate_estimator.estimate_utilization(),
+                total_utilisation=self._arrival_rate_estimator.estimate_total_utilization(),
+                total_average_response_time=self._arrival_rate_estimator.estimate_response_time(),
+                pending_tasks_count=self.pending_tasks.qsize()
+            )
+
             # Prevent high cpu utilization by sleeping between checks.
             time.sleep(self.SLEEP_TIME)
         self.stop()

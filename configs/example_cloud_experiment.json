@@ -16,7 +16,7 @@
       "scale_up_ratio": 0.8,
       "scale_down_ratio": 0.7,
       "scaling_grace_period": 180,
-      "min_node_pool_size": 3,
+      "min_node_pool_size": 2,
       "max_node_pool_size": 10
    },
    "execution_config": {
