@@ -2,7 +2,7 @@
   "trainTasks": [
     {
       "type": "distributed",
-      "lambda": 1.5,
+      "lambda": 1.0,
       "preemptJobs": false,
       "jobClassParameters": [
         {
@@ -26,20 +26,20 @@
             "dataParallelism": 2,
             "configurations": {
               "default": {
-                "cores": "4000m",
-                "memory": "2Gi"
+                "cores": "3500m",
+                "memory": "400Mi"
               }
             }
           },
           "hyperParameters": {
             "default": {
-              "totalEpochs": 1,
-              "batchSize": 128,
-              "testBatchSize": 128,
-              "learningRateDecay": 0.9,
+              "totalEpochs": 3,
+              "batchSize": 16,
+              "testBatchSize": 16,
+              "learningRateDecay": 0.1,
               "optimizerConfig": {
                 "type": "Adam",
-                "learningRate": 0.9,
+                "learningRate": 0.1,
                 "betas": [
                   0.9,
                   0.999

@@ -16,11 +16,11 @@
       "scale_up_ratio": 0.8,
       "scale_down_ratio": 0.7,
       "scaling_grace_period": 60,
-      "min_node_pool_size": 2,
+      "min_node_pool_size": 1,
       "max_node_pool_size": 10
    },
    "execution_config": {
-      "duration": 600,
+      "duration": 1800,
       "experiment_prefix": "cloud_experiment",
       "cuda": false,
       "tensorboard": {
