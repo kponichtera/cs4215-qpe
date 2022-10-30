@@ -62,7 +62,6 @@ class ClusterScaler:
                 self._logger.info(f"Scaling cluster from {current_node_count} to {required_node_count} nodes")
                 self._cluster_api_client.set_node_pool_size(required_node_count)
                 self._logger.info(f"Scaling finished. Resetting arrival estimator")
-                self._arrival_rate_estimator.reset()
 
         except Exception as e:
             self._logger.error(f"Error when scaling the cluster. Reason: {e}")
