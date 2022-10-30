@@ -13,8 +13,9 @@ class DataCollector:
     _column_names = ['time',
                      'num_nodes',
                      'estimated_nodes_num',
-                     'current_utilisation',
-                     'total_utilisation',
+                     'utilisation',
+                     'arrival_rate',
+                     'service_rate',
                      'total_average_response_time']
 
     def __init__(self, cluster_scaler: ClusterScaler, arrival_rate_estimator: ArrivalRateEstimator, ):
@@ -48,13 +49,14 @@ class DataCollector:
     def _collect_data(self):
         self._logger.info("Logging state to the file...")
         current_node_count = self._cluster_scaler.determine_current_node_count()
+
         self._log(
             num_nodes=current_node_count,
             estimated_nodes_num=self._cluster_scaler.determine_requested_node_count(current_node_count),
-            current_utilisation=self._arrival_rate_estimator.estimate_utilization(),
-            total_utilisation=self._arrival_rate_estimator.estimate_total_utilization(),
-            total_average_response_time=self._arrival_rate_estimator.estimate_response_time(),
-        )
+            utilisation=self._arrival_rate_estimator.estimate_utilization(current_node_count),
+            arrival_rate=self._arrival_rate_estimator.estimate_arrival_rate(),
+            service_rate=self._arrival_rate_estimator.estimate_service_rate() * current_node_count,
+            total_average_response_time=self._arrival_rate_estimator.estimate_response_time())
 
     def _initialize_file(self):
         now = int(time.time())
@@ -63,7 +65,8 @@ class DataCollector:
         self._output_file = open(file_name, 'w')
         self._output_file.write(self._header + '\n')
 
-    def _log(self, num_nodes, estimated_nodes_num, current_utilisation, total_utilisation, total_average_response_time):
+    def _log(self, num_nodes, estimated_nodes_num, utilisation, arrival_rate, service_rate,
+             total_average_response_time):
         if self._start_time is None:
             self._start_time = time.time()
             now = self._start_time
@@ -72,7 +75,7 @@ class DataCollector:
 
         time_since_start = now - self._start_time
 
-        line = f'{time_since_start},{num_nodes},{estimated_nodes_num},{current_utilisation},{total_utilisation},{total_average_response_time}\n'
+        line = f'{time_since_start},{num_nodes},{estimated_nodes_num},{utilisation},{arrival_rate},{service_rate},{total_average_response_time}\n'
         self._write_line(line)
 
     def _write_line(self, line):

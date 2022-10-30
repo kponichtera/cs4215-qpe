@@ -71,13 +71,18 @@ class ClusterScaler:
         return self._cluster_api_client.get_node_pool_size()
 
     def determine_requested_node_count(self, current_node_count) -> int:
-        utilization = self._arrival_rate_estimator.estimate_utilization()
+        utilization = self._arrival_rate_estimator.estimate_utilization(current_node_count)
+        arrival_rate = self._arrival_rate_estimator.estimate_arrival_rate()
+        service_rate = self._arrival_rate_estimator.estimate_service_rate()
 
         if utilization is None:
             self._logger.info("Not enough statistics collected to perform scaling")
             return self._limit_cluster_size(current_node_count)
 
         self._logger.info(f"Current utilization: {utilization}")
+        self._logger.info(f"Current arrival rate: {arrival_rate}")
+        self._logger.info(f"Current node count: {current_node_count}")
+        self._logger.info(f"Current service rate: {service_rate * current_node_count}")
 
         # If the ratio is smaller than the lower threshold => scale down 1 node
         if utilization < self._scale_down_ratio:
