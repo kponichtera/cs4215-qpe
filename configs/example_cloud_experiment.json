@@ -13,6 +13,7 @@
    "scaling_config": {
       "dry_run": false,
       "node_pool_name": "projects/test-bed-fltk-kponichtera/locations/us-central1-c/clusters/fltk-testbed-cluster/nodePools/medium-fltk-pool-1",
+      "estimated_job_service_time": 105,
       "scale_up_ratio": 0.8,
       "scale_down_ratio": 0.7,
       "scaling_grace_period": 60,

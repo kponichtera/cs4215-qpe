@@ -143,19 +143,21 @@ class ScalingConfig:
 
     dry_run: If true then no changed will be done to the cluster
     node_pool_name: name of the node pool to scale (e.g. projects/*/locations/*/clusters/*/nodePools/*)
+    estimated_job_service_time: the approximate job service time, obtained from ANOVA analysis
     scale_up_ratio: ratio of arrival rate to service rate (utilization) crossing which triggers the scale up
     scale_down_ratio: ratio of arrival rate to service rate (utilization) crossing which triggers the scale down
     scaling_grace_period: the minimum amount of time (in seconds) between cluster scalings
     max_node_pool_size: the maximum amount of nodes in the cluster
+    min_node_pool_size: the minimum amount of nodes in the cluster
     """
     dry_run: bool
     node_pool_name: str
+    estimated_job_service_time: int
     scale_up_ratio: float = 0.8
     scale_down_ratio: float = 0.7
     scaling_grace_period: int = 0
     min_node_pool_size: int = 3
     max_node_pool_size: int = 5
-
 @dataclass_json
 @dataclass
 class DistributedConfig:
