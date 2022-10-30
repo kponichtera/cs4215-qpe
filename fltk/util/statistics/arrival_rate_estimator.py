@@ -26,8 +26,9 @@ class ArrivalRateEstimator(Estimator):
     previous_arrival_timestamp = None
     last_3_inter_arrival_times = []
 
-    def __init__(self):
+    def __init__(self, job_service_time):
         super().__init__()
+        self._job_service_time = job_service_time
         self.total_completed_jobs_counter = 0
         self.total_response_time_sum = 0
 
@@ -71,4 +72,4 @@ class ArrivalRateEstimator(Estimator):
             return None
 
     def _estimate_service_rate(self) -> Optional[float]:
-        return 1/105
+        return 1 / self._job_service_time

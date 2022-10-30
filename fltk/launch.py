@@ -112,7 +112,7 @@ def exec_orchestrator(args: Namespace = None, conf: DistributedConfig = None, re
     # TODO: Move ClusterManager one level up, to allow for re-use
     cluster_manager = ClusterManager()
     cluster_api_client = GKEClusterApiClient(conf.scaling_config)
-    arrival_rate_estimator = ArrivalRateEstimator()
+    arrival_rate_estimator = ArrivalRateEstimator(conf.scaling_config.estimated_job_service_time)
     cluster_scaler = ClusterScaler(conf.scaling_config, arrival_rate_estimator, cluster_api_client)
     data_collector = DataCollector(cluster_scaler, arrival_rate_estimator)
     arrival_generator = get_arrival_generator(conf, arrival_rate_estimator, args.experiment)
